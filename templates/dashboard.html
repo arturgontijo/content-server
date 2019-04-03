@@ -23,69 +23,21 @@
             <tr>
               <th class="text-center">UID</th>
               <th class="text-center">Service</th>
+              <th class="text-center">Creation</th>
+              <th class="text-center">Queue</th>
               <th class="text-center">Expiration</th>
               <th class="text-center">Download</th>
             </tr>
-            <tr>
-              <td class="text-center">0</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">4-3-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-success btn-sm disabled">Download</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">1</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">4-3-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-success btn-sm">Download</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">1</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">4-3-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-info btn-sm disabled">Processing...</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">2</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">5-3-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-warning btn-sm disabled">Pending</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">3</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">4-3-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-warning btn-sm disabled">Pending</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">4</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">5-3-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-warning btn-sm disabled">Pending</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">1</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">4-1-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-danger btn-sm disabled">Expired</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">5</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">4-1-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-danger btn-sm disabled">Expired</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">6</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">4-1-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-danger btn-sm disabled">Expired</a></td>
-            </tr>
-            <tr>
-              <td class="text-center">7</td>
-              <td class="text-center">ImageRecon</td>
-              <td class="text-center">4-1-2019</td>
-              <td class="text-center"><a type="button" class="btn btn-block btn-danger btn-sm disabled">Expired</a></td>
-            </tr>
+            {% for item in content_list %}
+                <tr>
+                  <td class="text-center">{{ item["uid"] }}</td>
+                  <td class="text-center">{{ item["service"] }}</td>
+                  <td class="text-center">{{ item["date"] }}</td>
+                  <td class="text-center">{{ item["queue"] }}</td>
+                  <td class="text-center">{{ item["expiration"] }}</td>
+                  <td class="text-center"><a type="button" href='{{ item["url"] }}' class='{{ item["button_class"] }}'>{{ item["status"] }}</a></td>
+                </tr>
+            {% endfor %}
           </table>
         </div>
         <!-- /.box-body -->
