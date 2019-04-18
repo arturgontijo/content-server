@@ -78,11 +78,12 @@ class Database:
                     c.content = signed_url
             db.session.commit()
     
-    def delete(self, uid, content_id=None):
-        if self.query_one_uid(uid):
-            entry = UID(uid=uid)
+    def remove(self, uid, content_id=None):
+        print("Removing content: ", uid, content_id)
+        entry = self.query_one_uid(uid)
+        if entry:
             if content_id:
-                entry.contents.remove(content_id)
+                db.session.delete(self.query_one_content(uid, content_id))
             else:
                 db.session.delete(entry)
             db.session.commit()
@@ -94,6 +95,10 @@ class Database:
     @staticmethod
     def query_one_uid(uid):
         return UID.query.filter_by(uid=uid).first()
+
+    @staticmethod
+    def query_one_content(uid, content_id):
+        return Content.query.filter_by(content_id=f"{uid}#{content_id}").first()
 
 
 def serve(service_db=None):

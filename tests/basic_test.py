@@ -20,6 +20,7 @@ def main():
     service_db.add("0", "File_4", "Service_5", 1)
     service_db.add("0", "File_5", "Service_6", 3)
     service_db.add("0", "File_6", "Service_7", 3)
+    service_db.remove("0", "File_4")
 
     service_db.add("1", "File", "Service_1", 1)
     service_db.update("1", "File", queue=0)
