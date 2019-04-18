@@ -4,7 +4,7 @@
 {% block counter %}
 <span class="pull-right-container">
   {% for item in content_list[:3] %}
-    <small class="label label-primary pull-left">{{ item["queue"] }}</small>
+    <small class="label label-primary pull-left">{{ item["queue_pos"] }}</small>
   {% endfor %}
 </span>
 {% endblock %}
@@ -44,9 +44,14 @@
                   <td class="text-center">{{ item["service"] }}</td>
                   <td class="text-center">{{ item["content_id"].split("#")[-1] }}</td>
                   <td class="text-center">{{ item["date"] }}</td>
-                  <td class="text-center">{{ item["queue"] }}</td>
+                  <td class="text-center">{{ item["queue_pos"] }}</td>
                   <td class="text-center">{{ item["expiration"] }}</td>
-                  <td class="text-center"><a type="button" href='{{ item["url"] }}' class='{{ item["button_class"] }}'>{{ item["status"] }}</a></td>
+                  {% if item["content_type"] == "url" %}
+                    <td class="text-center"><a type="button" href='{{ item["content"] }}' class='{{ item["button_class"] }}'>{{ item["status"] }}</a></td>
+                  {% else %}
+                    <td class="text-center">{{ item["content"] }}</td>
+                  {% endif %}
+
                 </tr>
             {% endfor %}
           </table>
