@@ -22,18 +22,29 @@ db = SQLAlchemy(app)
 
 
 class UID(db.Model):
+    __tablename__ = "uid"
     uid = db.Column(db.String(80), primary_key=True, unique=True, nullable=False)
-    service_name = db.Column(db.String(200), default="")
-    queue = db.Column(db.Integer, nullable=False)
-    url = db.Column(db.String(200), default=None)
-    expiration = db.Column(db.DateTime)
-    creation = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    contents = db.relationship("Content", backref='uid', lazy=True, cascade="all, delete, delete-orphan")
     
     def __repr__(self):
-        return "<UID {}><Queue {}><SignedURL {}><Expiration {}><Creation {}>".format(
-            self.uid,
+        return "{}".format(self.uid)
+
+    
+class Content(db.Model):
+    __tablename__ = "content"
+    content_id = db.Column(db.String(80), primary_key=True, nullable=False)
+    service_name = db.Column(db.String(200), default="")
+    queue = db.Column(db.Integer, nullable=False)
+    expiration = db.Column(db.DateTime)
+    creation = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    content = db.Column(db.String(200), default=None)
+    content_uid = db.Column(db.Integer, db.ForeignKey('uid.uid'), nullable=False)
+    
+    def __repr__(self):
+        return "<UID {}><Queue {}><Content {}><Expiration {}><Creation {}>".format(
+            self.content_uid,
             self.queue,
-            self.url,
+            self.content,
             self.expiration,
             self.creation)
 
@@ -47,27 +58,33 @@ class Database:
             db.drop_all()
         db.create_all()
     
-    def add(self, uid, service_name, queue):
-        print("Adding user: ", uid)
+    def add(self, uid, content_id, service_name, queue):
+        print("Adding content: ", uid, content_id)
         entry = self.query_one_uid(uid)
         if not entry:
-            entry = UID(uid=uid, service_name=service_name, queue=queue)
+            entry = UID(uid=uid)
+        entry.contents.append(Content(content_id=f"{uid}#{content_id}", service_name=service_name, queue=queue))
         db.session.add(entry)
         db.session.commit()
     
-    def update(self, uid, queue, expiration=None, signed_url=None):
-        print("Updating user: ", uid)
+    def update(self, uid, content_id, queue, expiration=None, signed_url=None):
+        print("Updating content: ", uid, content_id)
         entry = self.query_one_uid(uid)
-        if entry:
-            entry.queue = queue
-            entry.expiration = expiration
-            entry.url = signed_url
+        if entry and entry.contents:
+            for _, c in enumerate(entry.contents):
+                if c.content_id == f"{uid}#{content_id}":
+                    c.queue = queue
+                    c.expiration = expiration
+                    c.content = signed_url
             db.session.commit()
     
-    def delete(self, uid):
+    def delete(self, uid, content_id=None):
         if self.query_one_uid(uid):
             entry = UID(uid=uid)
-            db.session.delete(entry)
+            if content_id:
+                entry.contents.remove(content_id)
+            else:
+                db.session.delete(entry)
             db.session.commit()
     
     @staticmethod
@@ -85,43 +102,45 @@ def serve(service_db=None):
     
     def get_content_list(uid):
         content_list = []
-        content = service_db.query_one_uid(uid)
-        if content:
-            if content.queue == -1:
-                position = status = "Ready"
-                btn_type = "success"
-            elif content.queue == 0:
-                position = status = "Processing"
-                btn_type = "info"
-            else:
-                position = content.queue
-                status = "Pending"
-                btn_type = "warning"
-            
-            btn_disabled = "disabled" if content.uid != uid else ""
-            url = "" if content.uid != uid else content.url
-            
-            expiration = content.expiration.strftime("%m/%d/%Y, %H:%M:%S") if content.expiration else status
-            if not content.expiration:
-                btn_disabled = "disabled"
-            elif content.expiration <= datetime.now():
-                btn_type = "danger"
-                btn_disabled = "disabled"
-                status = "Expired"
-                url = ""
-                expiration = content.expiration.strftime("%m/%d/%Y, %H:%M:%S"),
-            
-            d = {
-                "uid": content.uid,
-                "service": content.service_name,
-                "queue": position,
-                "button_class": f"btn btn-block btn-{btn_type} btn-sm {btn_disabled}",
-                "status": status,
-                "url": url,
-                "expiration": expiration,
-                "date": content.creation.strftime("%m/%d/%Y, %H:%M:%S")
-            }
-            content_list.append(d)
+        uid = service_db.query_one_uid(uid)
+        if uid and uid.contents:
+            for c in uid.contents:
+                if c.queue == -1:
+                    position = status = "Ready"
+                    btn_type = "success"
+                elif c.queue == 0:
+                    position = status = "Processing"
+                    btn_type = "info"
+                else:
+                    position = c.queue
+                    status = "Pending"
+                    btn_type = "warning"
+                
+                btn_disabled = "disabled" if c.uid != uid else ""
+                url = "" if c.uid != uid else c.content
+                
+                expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S") if c.expiration else status
+                if not c.expiration:
+                    btn_disabled = "disabled"
+                elif c.expiration <= datetime.now():
+                    btn_type = "danger"
+                    btn_disabled = "disabled"
+                    status = "Expired"
+                    url = ""
+                    expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S"),
+                
+                d = {
+                    "uid": c.uid,
+                    "service": c.service_name,
+                    "content_id": c.content_id,
+                    "queue": position,
+                    "button_class": f"btn btn-block btn-{btn_type} btn-sm {btn_disabled}",
+                    "status": status,
+                    "url": url,
+                    "expiration": expiration,
+                    "date": c.creation.strftime("%m/%d/%Y, %H:%M:%S")
+                }
+                content_list.append(d)
         return content_list
     
     def check_uid(uid):

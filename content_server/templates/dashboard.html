@@ -3,8 +3,8 @@
 
 {% block counter %}
 <span class="pull-right-container">
-  {% for item in content_list %}
-    <small class="label label-primary pull-right">{{ item["queue"] }}</small>
+  {% for item in content_list[:3] %}
+    <small class="label label-primary pull-left">{{ item["queue"] }}</small>
   {% endfor %}
 </span>
 {% endblock %}
@@ -32,6 +32,7 @@
             <tr>
               <th class="text-center">UID</th>
               <th class="text-center">Service</th>
+              <th class="text-center">ContentID</th>
               <th class="text-center">Creation</th>
               <th class="text-center">Queue</th>
               <th class="text-center">Expiration</th>
@@ -41,6 +42,7 @@
                 <tr>
                   <td class="text-center">{{ item["uid"] }}</td>
                   <td class="text-center">{{ item["service"] }}</td>
+                  <td class="text-center">{{ item["content_id"].split("#")[-1] }}</td>
                   <td class="text-center">{{ item["date"] }}</td>
                   <td class="text-center">{{ item["queue"] }}</td>
                   <td class="text-center">{{ item["expiration"] }}</td>
