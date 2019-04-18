@@ -53,12 +53,8 @@
             <li>
               <a href="/">
                 <i class="fa fa-refresh"></i> <span>Reload</span>
-                <span class="pull-right-container">
-                  <small class="label pull-right bg-red">4</small>
-                  <small class="label pull-right bg-yellow">3</small>
-                  <small class="label pull-right bg-blue">1</small>
-                  <small class="label pull-right bg-green">2</small>
-                </span>
+                {% block counter %}
+                {% endblock %}
               </a>
             </li>
             <li>

@@ -83,8 +83,8 @@ my_db = Database()
 
 def get_content_list(uid):
     content_list = []
-    for idx, content in enumerate(my_db.query_all_uid()):
-
+    content = my_db.query_one_uid(uid)
+    if content:
         if content.queue == -1:
             position = status = "Ready"
             btn_type = "success"
@@ -95,10 +95,10 @@ def get_content_list(uid):
             position = content.queue
             status = "Pending"
             btn_type = "warning"
-
+    
         btn_disabled = "disabled" if content.uid != uid else ""
         url = "" if content.uid != uid else content.url
-
+    
         expiration = content.expiration.strftime("%m/%d/%Y, %H:%M:%S") if content.expiration else status
         if not content.expiration:
             btn_disabled = "disabled"

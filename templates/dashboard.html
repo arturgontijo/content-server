@@ -1,5 +1,14 @@
 {% extends "layout.html" %}
 {% block title %}Services{% endblock %}
+
+{% block counter %}
+<span class="pull-right-container">
+  {% for item in content_list %}
+    <small class="label label-primary pull-right">{{ item["queue"] }}</small>
+  {% endfor %}
+</span>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-xs-12">
