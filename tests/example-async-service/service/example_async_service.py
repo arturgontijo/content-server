@@ -9,8 +9,8 @@ import hashlib
 from datetime import datetime
 import time
 from random import randint
-from content_server import Database as ct_db
-from content_server import serve as ct_serve
+from content_server import Database as content_server_db
+from content_server import serve as content_server_serve
 
 import service.common
 
@@ -78,36 +78,64 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         # - Get an UID for this request (datetime based)
         self.result.uid = generate_uid()
         delay = randint(30, 120)
-        Thread(target=async_response, args=(self.result.uid, "ADD", delay, self.a + self.b)).start()
+        res_th = Thread(target=async_response, daemon=True, args=(self.result.uid, "ADD", delay, self.a, self.b))
+        res_th.start()
 
         log.debug("add({},{},{},{})=Pending".format(self.result.uid, delay, self.a, self.b))
         return self.result
 
     def sub(self, request, context):
+        # In our case, request is a Numbers() object (from .proto file)
         self.a = request.a
         self.b = request.b
 
+        # To respond we need to create a Result() object (from .proto file)
         self.result = Result()
-        self.result.value = self.a - self.b
-        log.debug("sub({},{})={}".format(self.a, self.b, self.result.value))
+
+        # ASYNC Content Server Logic
+        # - Get an UID for this request (datetime based)
+        self.result.uid = generate_uid()
+        delay = randint(30, 120)
+        res_th = Thread(target=async_response, daemon=True, args=(self.result.uid, "SUB", delay, self.a, self.b))
+        res_th.start()
+
+        log.debug("sub({},{},{},{})=Pending".format(self.result.uid, delay, self.a, self.b))
         return self.result
 
     def mul(self, request, context):
+        # In our case, request is a Numbers() object (from .proto file)
         self.a = request.a
         self.b = request.b
 
+        # To respond we need to create a Result() object (from .proto file)
         self.result = Result()
-        self.result.value = self.a * self.b
-        log.debug("mul({},{})={}".format(self.a, self.b, self.result.value))
+
+        # ASYNC Content Server Logic
+        # - Get an UID for this request (datetime based)
+        self.result.uid = generate_uid()
+        delay = randint(30, 120)
+        res_th = Thread(target=async_response, daemon=True, args=(self.result.uid, "MUL", delay, self.a, self.b))
+        res_th.start()
+
+        log.debug("mul({},{},{},{})=Pending".format(self.result.uid, delay, self.a, self.b))
         return self.result
 
     def div(self, request, context):
+        # In our case, request is a Numbers() object (from .proto file)
         self.a = request.a
         self.b = request.b
 
+        # To respond we need to create a Result() object (from .proto file)
         self.result = Result()
-        self.result.value = self.a / self.b
-        log.debug("div({},{})={}".format(self.a, self.b, self.result.value))
+
+        # ASYNC Content Server Logic
+        # - Get an UID for this request (datetime based)
+        self.result.uid = generate_uid()
+        delay = randint(30, 120)
+        res_th = Thread(target=async_response, daemon=True, args=(self.result.uid, "DIV", delay, self.a, self.b))
+        res_th.start()
+
+        log.debug("div({},{},{},{})=Pending".format(self.result.uid, delay, self.a, self.b))
         return self.result
 
 
@@ -126,7 +154,7 @@ def serve(max_workers=10, port=7777):
     return server
 
 
-def async_response(uid, content_id, delay, result):
+def async_response(uid, content_id, delay, a, b):
     # ASYNC Content Server Logic
     # - Put the request UID#CONTENT_ID in the Queue of Request
     # - Add it to the Content Server DB
@@ -145,7 +173,16 @@ def async_response(uid, content_id, delay, result):
     while queue_pos != 0:
         queue_pos = queue_get_pos(item)
         time.sleep(1)
-        log.info("[{}] Waiting...".format(item))
+
+    result = 0
+    if content_id == "ADD":
+        result = a + b
+    elif content_id == "SUB":
+        result = a - b
+    elif content_id == "MUL":
+        result = a * b
+    elif content_id == "DIV":
+        result = a / b
 
     time.sleep(delay)
     service_db.update(uid,
@@ -185,12 +222,12 @@ def generate_uid():
 
 def init_content_server():
     global service_db
-    service_db = ct_db()
+    service_db = content_server_db(log)
     log.info("Creating Content Server Database...")
     service_db.create(drop=True)
     
-    # Start serving
-    ct_serve(admin_pwd="admin", service_db=service_db)
+    # Start serving at localhost:7001 with "admin" as the admin password
+    content_server_serve(host="localhost", port=7001, admin_pwd="admin", service_db=service_db)
 
 
 if __name__ == "__main__":
@@ -201,6 +238,7 @@ if __name__ == "__main__":
     args = parser.parse_args(sys.argv[1:])
     
     # Initiate Content Server (Database and Server)
-    Thread(target=init_content_server).start()
+    content_server_th = Thread(target=init_content_server, daemon=True)
+    content_server_th.start()
     
     service.common.main_loop(serve, args)

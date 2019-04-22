@@ -51,6 +51,9 @@ class Content(db.Model):
 
 
 class Database:
+    def __init__(self, log):
+        self.log = log
+
     @staticmethod
     def create(drop=False):
         if not os.path.exists(db_file_folder):
@@ -60,7 +63,8 @@ class Database:
         db.create_all()
     
     def add(self, uid, content_id, service_name, queue_pos, content_type):
-        print("Adding content: ", uid, content_id)
+        if self.log:
+            self.log.info("Adding content: {} {}".format(uid, content_id))
         
         entry = self.query_one_uid(uid)
         if not entry:
@@ -74,7 +78,8 @@ class Database:
         db.session.commit()
 
     def add_admin(self, uid):
-        print("Adding Admin: ", uid)
+        if self.log:
+            self.log.info("Adding Admin: {}".format(uid))
     
         entry = self.query_one_uid(uid)
         if not entry:
@@ -84,7 +89,8 @@ class Database:
         db.session.commit()
     
     def update(self, uid, content_id, queue_pos, expiration=None, content=None):
-        print("Updating content: ", uid, content_id)
+        if self.log:
+            self.log.info("Updating content: {} {}".format(uid, content_id))
         
         entry = self.query_one_uid(uid)
         if entry and entry.contents:
@@ -96,7 +102,9 @@ class Database:
             db.session.commit()
     
     def remove(self, uid, content_id=None):
-        print("Removing content: ", uid, content_id)
+        if self.log:
+            self.log.info("Removing content: {} {}".format(uid, content_id))
+
         entry = self.query_one_uid(uid)
         if entry:
             if content_id:
@@ -118,9 +126,9 @@ class Database:
         return Content.query.filter_by(content_id=f"{uid}#{content_id}").first()
 
 
-def serve(admin_pwd=None, service_db=None):
+def serve(host="0.0.0.0", port=7000, admin_pwd=None, service_db=None, log=None):
     if not service_db:
-        service_db = Database()
+        service_db = Database(log)
     
     def get_content_list(uid):
         content_list = []
@@ -167,7 +175,6 @@ def serve(admin_pwd=None, service_db=None):
         return content_list
     
     def check_uid(uid):
-        print("Checking UID...")
         if service_db.query_one_uid(uid):
             return True
         return False
@@ -189,7 +196,6 @@ def serve(admin_pwd=None, service_db=None):
     def login():
         if request.method == "POST":
             uid = request.form.get("uid")
-            content_list = []
             if admin_pwd and uid == admin_pwd:
                 content_list = []
                 for uid_entry in service_db.query_all_uid():
@@ -201,6 +207,7 @@ def serve(admin_pwd=None, service_db=None):
             elif check_uid(uid):
                 session["uid"] = uid
                 session["logged"] = True
+                content_list = get_content_list(session["uid"])
                 return render_template("dashboard.html",
                                        content_list=content_list)
         return render_template("login.html")
@@ -212,5 +219,5 @@ def serve(admin_pwd=None, service_db=None):
         return render_template("login.html")
     
     # Running Flask App...
-    app.run(debug=False, host="0.0.0.0", port=7001, use_reloader=False, passthrough_errors=True)
+    app.run(debug=False, host=host, port=port, use_reloader=False, passthrough_errors=True)
 

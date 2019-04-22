@@ -6,7 +6,7 @@ with open('content_server/__init__.py', 'rt', encoding='utf8') as f:
     version = re.search(r'__version__ = "(.*?)"', f.read()).group(1)
 
 setup(
-    name='content-service',
+    name='content-server',
     version=version,
     packages=find_packages(),
     url='https://github.com/arturgontijo/content-server',

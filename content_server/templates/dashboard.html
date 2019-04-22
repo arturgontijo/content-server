@@ -3,8 +3,14 @@
 
 {% block counter %}
 <span class="pull-right-container">
-  {% for item in content_list[:3] %}
-    <small class="label label-primary pull-left">{{ item["queue_pos"] }}</small>
+  {% for item in content_list[-3:] %}
+    {% set status = item["queue_pos"] %}
+    {% if item["queue_pos"] == "Ready" %}
+      {% set status = "OK" %}
+    {% elif item["queue_pos"] == "Processing" %}
+      {% set status = "P" %}
+    {% endif %}
+    <small class="label label-primary pull-left">{{ status }}</small>
   {% endfor %}
 </span>
 {% endblock %}
@@ -36,7 +42,7 @@
               <th class="text-center">Creation</th>
               <th class="text-center">Queue</th>
               <th class="text-center">Expiration</th>
-              <th class="text-center">Download</th>
+              <th class="text-center">Response</th>
             </tr>
             {% for item in content_list %}
                 <tr>
