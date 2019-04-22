@@ -8,6 +8,7 @@ from threading import Thread
 from datetime import datetime
 import time
 from random import randint
+import requests
 from content_server import Database as content_server_db
 from content_server import serve as content_server_serve
 
@@ -74,9 +75,9 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                                     func=self.process_request,
                                     args=request)
 
-        # Re-use the same UID to register another entry
+        # Re-use the same UID to register another entry.
         result.uid = service_db.add(uid=result.uid,
-                                    content_id="URL",
+                                    content_id="ADD_URL",
                                     service_name="example_async_service",
                                     content_type="url",
                                     func=self.process_request,
@@ -96,6 +97,20 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                                     content_type="text",
                                     func=self.process_request,
                                     args=request)
+
+        # Re-use the same UID to register another entry (via HTTP POST).
+        content_id = "SUB_URL"
+        r = requests.post("http://localhost:7001/post_add",
+                          data={
+                              "uid": result.uid,
+                              "content_id": content_id,
+                              "service_name": "example_async_service",
+                              "content_type": "url"
+                          })
+        # Initiate Content Server (Database and Server)
+        sub_post_th = Thread(target=self.process_request_post, daemon=True, args=(request, result.uid, content_id))
+        sub_post_th.start()
+        log.info("POST_ADD ({},{}) STATUS_CODE: {}".format(result.uid, content_id, r.status_code))
 
         log.debug("sub({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
@@ -139,7 +154,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
             queue_pos = service_db.queue_get_pos(item)
             time.sleep(1)
     
-        delay = randint(30, 60)
+        delay = randint(10, 30)
         print("Delay: ", delay)
         time.sleep(delay)
     
@@ -152,15 +167,62 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
             content = "Result: {}".format(request.a * request.b)
         elif content_id == "DIV":
             content = "Result: {}".format(request.a / request.b)
-        elif content_id == "URL":
+        elif "URL" in content_id:
             content = "https://singularitynet.io"
-        
+    
         # Got the response, update DB with expiration and content
         service_db.update(uid,
                           content_id,
                           queue_pos=-1,
                           expiration=datetime.strptime("05/10/2019 16:30:00", "%m/%d/%Y %H:%M:%S"),
                           content=content)
+    
+        log.debug("{}({})={} [Ready]".format(content_id.lower(), uid, content))
+
+    @staticmethod
+    def process_request_post(request, uid, content_id):
+        # Waiting for queue
+        r = requests.post("http://localhost:7001/queue_get_pos",
+                          data={
+                              "uid": uid,
+                              "content_id": content_id
+                          })
+        queue_pos = int(r.text)
+        while queue_pos != 0:
+            r = requests.post("http://localhost:7001/queue_get_pos",
+                              data={
+                                  "uid": uid,
+                                  "content_id": content_id
+                              })
+            queue_pos = int(r.text)
+            time.sleep(5)
+    
+        delay = randint(10, 30)
+        print("Delay: ", delay)
+        time.sleep(delay)
+    
+        content = ""
+        if content_id == "ADD":
+            content = "Result: {}".format(request.a + request.b)
+        elif content_id == "SUB":
+            content = "Result: {}".format(request.a - request.b)
+        elif content_id == "MUL":
+            content = "Result: {}".format(request.a * request.b)
+        elif content_id == "DIV":
+            content = "Result: {}".format(request.a / request.b)
+        elif "URL" in content_id:
+            content = "https://singularitynet.io"
+        
+        # Got the response, update DB with expiration and content
+        r = requests.post("http://localhost:7001/post_update",
+                          data={
+                              "uid": uid,
+                              "content_id": content_id,
+                              "queue_pos": -1,
+                              "expiration": "05/10/2019 16:30:00",
+                              "content": content
+                          })
+        log.info("POST_UPDATE ({},{}) STATUS_CODE: {}".format(uid, content_id, r.status_code))
     
         log.debug("{}({})={} [Ready]".format(content_id.lower(), uid, content))
 

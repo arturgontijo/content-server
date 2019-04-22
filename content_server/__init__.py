@@ -44,12 +44,12 @@ class Content(db.Model):
     content_uid = db.Column(db.Integer, db.ForeignKey('uid.uid'), nullable=False)
     
     def __repr__(self):
-        return "<UID {}><Queue {}><Content {}><Expiration {}><Creation {}>".format(
+        return "<UID {}><Queue {}><Expiration {}><Creation {}><Content {}>".format(
             self.content_uid,
             self.queue_pos,
-            self.content,
             self.expiration,
-            self.creation)
+            self.creation,
+            self.content)
 
 
 class Database:
@@ -104,11 +104,12 @@ class Database:
     # ------------------------------------------------------------------------------------------------------------------
     
     def add(self, uid=None, content_id=None, service_name=None, content_type=None, func=None, args=None):
-        if self.log:
-            self.log.info("Adding content: {} {}".format(uid, content_id))
-        
+       
         if not uid:
             uid = self._generate_uid()
+
+        if self.log:
+            self.log.info("Adding content: {} {}".format(uid, content_id))
         
         entry = self.query_one_uid(uid)
         if not entry:
@@ -125,8 +126,9 @@ class Database:
         db.session.add(entry)
         db.session.commit()
 
-        res_th = Thread(target=func, daemon=True, args=(args, uid, content_id, ))
-        res_th.start()
+        if func:
+            res_th = Thread(target=func, daemon=True, args=(args, uid, content_id, ))
+            res_th.start()
         
         return uid
 
@@ -143,7 +145,7 @@ class Database:
     
     def update(self, uid, content_id, queue_pos, expiration=None, content=None):
         if self.log:
-            self.log.info("Updating content: {} {}".format(uid, content_id))
+            self.log.info("Updating content: {} {} Queue: {}".format(uid, content_id, queue_pos))
         
         item = f"{uid}#{content_id}"
         entry = self.query_one_uid(uid)
@@ -261,6 +263,62 @@ def serve(host="0.0.0.0", port=7000, admin_pwd=None, service_db=None, log=None):
         session["logged"] = False
         session["uid"] = -1
         return render_template("login.html")
+
+    @app.route("/post_add", methods=["POST"])
+    def post_add():
+        try:
+            if request.method == "POST":
+                uid = request.form.get("uid", None)
+                content_id = request.form.get("content_id", None)
+                service_name = request.form.get("service_name", None)
+                content_type = request.form.get("content_type", None)
+                uid = service_db.add(uid=uid,
+                                     content_id=content_id,
+                                     service_name=service_name,
+                                     content_type=content_type)
+                return uid
+        except Exception as e:
+            return str(e)
+
+    @app.route("/post_update", methods=["POST"])
+    def post_update():
+        try:
+            if request.method == "POST":
+                uid = request.form.get("uid", None)
+                content_id = request.form.get("content_id", None)
+                queue_pos = request.form.get("queue_pos", None)
+                expiration = request.form.get("expiration", None)
+                expiration = datetime.strptime(expiration, "%m/%d/%Y %H:%M:%S")
+                content = request.form.get("content", None)
+                service_db.update(uid=uid,
+                                  content_id=content_id,
+                                  queue_pos=int(queue_pos),
+                                  expiration=expiration,
+                                  content=content)
+                return uid
+        except Exception as e:
+            return str(e)
+
+    @app.route("/post_remove", methods=["POST"])
+    def post_remove():
+        try:
+            if request.method == "POST":
+                uid = request.form.get("uid", None)
+                content_id = request.form.get("content_id", None)
+                service_db.remove(uid, content_id)
+                return uid
+        except Exception as e:
+            return str(e)
+
+    @app.route("/queue_get_pos", methods=["POST"])
+    def queue_get_pos():
+        try:
+            if request.method == "POST":
+                uid = request.form.get("uid", None)
+                content_id = request.form.get("content_id", None)
+                return str(service_db.queue_get_pos(f"{uid}#{content_id}"))
+        except Exception as e:
+            return str(e)
     
     # Running Flask App...
     app.run(debug=False, host=host, port=port, use_reloader=False, passthrough_errors=True)
