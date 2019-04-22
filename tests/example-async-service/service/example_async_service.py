@@ -5,7 +5,6 @@ import grpc
 import concurrent.futures as futures
 
 from threading import Thread
-import hashlib
 from datetime import datetime
 import time
 from random import randint
@@ -57,9 +56,6 @@ Calling service...
 # derived from the protobuf codes.
 class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
     def __init__(self):
-        self.a = 0
-        self.b = 0
-        self.result = 0
         # Just for debugging purpose.
         log.debug("CalculatorServicer created")
 
@@ -67,76 +63,106 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
     # request: incoming data
     # context: object that provides RPC-specific information (timeout, etc).
     def add(self, request, context):
-        # In our case, request is a Numbers() object (from .proto file)
-        self.a = request.a
-        self.b = request.b
-
         # To respond we need to create a Result() object (from .proto file)
-        self.result = Result()
+        result = Result()
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        self.result.uid = generate_uid()
-        delay = randint(30, 120)
-        res_th = Thread(target=async_response, daemon=True, args=(self.result.uid, "ADD", delay, self.a, self.b))
-        res_th.start()
+        result.uid = service_db.add(content_id="ADD",
+                                    service_name="example_async_service",
+                                    content_type="text",
+                                    func=self.process_request,
+                                    args=request)
 
-        log.debug("add({},{},{},{})=Pending".format(self.result.uid, delay, self.a, self.b))
-        return self.result
+        # Re-use the same UID to register another entry
+        result.uid = service_db.add(uid=result.uid,
+                                    content_id="EXTRA",
+                                    service_name="example_async_service",
+                                    content_type="text",
+                                    func=self.process_request,
+                                    args=request)
+
+        log.debug("add({},{},{})=Pending".format(result.uid, request.a, request.b))
+        return result
 
     def sub(self, request, context):
-        # In our case, request is a Numbers() object (from .proto file)
-        self.a = request.a
-        self.b = request.b
-
         # To respond we need to create a Result() object (from .proto file)
-        self.result = Result()
+        result = Result()
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        self.result.uid = generate_uid()
-        delay = randint(30, 120)
-        res_th = Thread(target=async_response, daemon=True, args=(self.result.uid, "SUB", delay, self.a, self.b))
-        res_th.start()
+        result.uid = service_db.add(content_id="SUB",
+                                    service_name="example_async_service",
+                                    content_type="text",
+                                    func=self.process_request,
+                                    args=request)
 
-        log.debug("sub({},{},{},{})=Pending".format(self.result.uid, delay, self.a, self.b))
-        return self.result
+        log.debug("sub({},{},{})=Pending".format(result.uid, request.a, request.b))
+        return result
 
     def mul(self, request, context):
-        # In our case, request is a Numbers() object (from .proto file)
-        self.a = request.a
-        self.b = request.b
-
         # To respond we need to create a Result() object (from .proto file)
-        self.result = Result()
+        result = Result()
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        self.result.uid = generate_uid()
-        delay = randint(30, 120)
-        res_th = Thread(target=async_response, daemon=True, args=(self.result.uid, "MUL", delay, self.a, self.b))
-        res_th.start()
+        result.uid = service_db.add(content_id="MUL",
+                                    service_name="example_async_service",
+                                    content_type="text",
+                                    func=self.process_request,
+                                    args=request)
 
-        log.debug("mul({},{},{},{})=Pending".format(self.result.uid, delay, self.a, self.b))
-        return self.result
+        log.debug("mul({},{},{})=Pending".format(result.uid, request.a, request.b))
+        return result
 
     def div(self, request, context):
-        # In our case, request is a Numbers() object (from .proto file)
-        self.a = request.a
-        self.b = request.b
-
         # To respond we need to create a Result() object (from .proto file)
-        self.result = Result()
+        result = Result()
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        self.result.uid = generate_uid()
-        delay = randint(30, 120)
-        res_th = Thread(target=async_response, daemon=True, args=(self.result.uid, "DIV", delay, self.a, self.b))
-        res_th.start()
+        result.uid = service_db.add(content_id="DIV",
+                                    service_name="example_async_service",
+                                    content_type="text",
+                                    func=self.process_request,
+                                    args=request)
 
-        log.debug("div({},{},{},{})=Pending".format(self.result.uid, delay, self.a, self.b))
-        return self.result
+        log.debug("div({},{},{})=Pending".format(result.uid, request.a, request.b))
+        return result
+
+    @staticmethod
+    def process_request(request, uid, content_id):
+    
+        item = f"{uid}#{content_id}"
+        queue_pos = service_db.queue_get_pos(item)
+        while queue_pos != 0:
+            queue_pos = service_db.queue_get_pos(item)
+            time.sleep(1)
+    
+        delay = randint(30, 120)
+        print("Delay: ", delay)
+        time.sleep(delay)
+    
+        result = 0
+        if content_id == "ADD":
+            result = request.a + request.b
+        elif content_id == "SUB":
+            result = request.a - request.b
+        elif content_id == "MUL":
+            result = request.a * request.b
+        elif content_id == "DIV":
+            result = request.a / request.b
+        elif content_id == "EXTRA":
+            result = "SomeExtraContent"
+        
+        # Got the response, update DB with expiration and content
+        service_db.update(uid,
+                          content_id,
+                          queue_pos=-1,
+                          expiration=datetime.strptime("05/10/2019 16:30:00", "%m/%d/%Y %H:%M:%S"),
+                          content="Result: {}".format(result))
+    
+        log.debug("add({})={} [Ready]".format(uid, result))
 
 
 # The gRPC serve function.
@@ -154,78 +180,13 @@ def serve(max_workers=10, port=7777):
     return server
 
 
-def async_response(uid, content_id, delay, a, b):
-    # ASYNC Content Server Logic
-    # - Put the request UID#CONTENT_ID in the Queue of Request
-    # - Add it to the Content Server DB
-    # - Mock a delay to make it "async"
-    # - Update the Content Server DB
-    item = f"{uid}#{content_id}"
-    queue.append(item)
-    queue_pos = queue_get_pos(item)
-    
-    service_db.add(uid=uid,
-                   content_id=content_id,
-                   service_name="example_async_service",
-                   queue_pos=queue_pos,
-                   content_type="text")
-    
-    while queue_pos != 0:
-        queue_pos = queue_get_pos(item)
-        time.sleep(1)
-
-    result = 0
-    if content_id == "ADD":
-        result = a + b
-    elif content_id == "SUB":
-        result = a - b
-    elif content_id == "MUL":
-        result = a * b
-    elif content_id == "DIV":
-        result = a / b
-
-    time.sleep(delay)
-    service_db.update(uid,
-                      content_id,
-                      queue_pos=-1,
-                      expiration=datetime.strptime("05/10/2019 16:30:00", "%m/%d/%Y %H:%M:%S"),
-                      content="Result: {}".format(result))
-
-    queue_rem_pos(item)
-    log.debug("add({})={} [Ready]".format(uid, result))
-
-
-def queue_get_pos(item):
-    return queue.index(item)
-
-
-def queue_update():
-    for item in queue:
-        [uid, content_id] = item.split("#")
-        service_db.update(uid,
-                          content_id,
-                          queue_pos=queue_get_pos(item))
-
-
-def queue_rem_pos(item):
-    queue.pop(queue.index(item))
-    queue_update()
-
-
-def generate_uid():
-    m = hashlib.sha256()
-    m.update(str(datetime.now()).encode("utf-8"))
-    m = m.digest().hex()
-    # Get only the first and the last 10 hex
-    return m[:10] + m[-10:]
-
-
 def init_content_server():
-    global service_db
-    service_db = content_server_db(log)
     log.info("Creating Content Server Database...")
+    global service_db
+    service_db = content_server_db(log=log)
     service_db.create(drop=True)
-    
+
+    log.info("Starting Content Server...")
     # Start serving at localhost:7001 with "admin" as the admin password
     content_server_serve(host="localhost", port=7001, admin_pwd="admin", service_db=service_db)
 

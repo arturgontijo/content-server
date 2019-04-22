@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from datetime import datetime
+import hashlib
+from threading import Thread
 
 from flask import Flask, render_template, session, request
 from flask_sqlalchemy import SQLAlchemy
@@ -51,7 +53,10 @@ class Content(db.Model):
 
 
 class Database:
-    def __init__(self, log):
+    def __init__(self, queue=None, log=None):
+        self.queue = []
+        if queue:
+            self.queue = queue
         self.log = log
 
     @staticmethod
@@ -61,21 +66,69 @@ class Database:
         elif drop:
             db.drop_all()
         db.create_all()
+
+    @staticmethod
+    def query_all_uid():
+        return UID.query.all()
+
+    @staticmethod
+    def query_one_uid(uid):
+        return UID.query.filter_by(uid=uid).first()
+
+    @staticmethod
+    def query_one_content(uid, content_id):
+        return Content.query.filter_by(content_id=f"{uid}#{content_id}").first()
+
+    @staticmethod
+    def _generate_uid():
+        m = hashlib.sha256()
+        m.update(str(datetime.now()).encode("utf-8"))
+        m = m.digest().hex()
+        # Get only the first and the last 10 hex
+        return m[:10] + m[-10:]
     
-    def add(self, uid, content_id, service_name, queue_pos, content_type):
+    # ------------------------------------------ Queue Methods ---------------------------------------------------------
+    def queue_get_pos(self, item):
+        return self.queue.index(item)
+
+    def queue_update(self):
+        for item in self.queue:
+            [uid, content_id] = item.split("#")
+            self.update(uid,
+                        content_id,
+                        queue_pos=self.queue_get_pos(item))
+
+    def queue_rem_pos(self, item):
+        self.queue.pop(self.queue.index(item))
+        self.queue_update()
+    # ------------------------------------------------------------------------------------------------------------------
+    
+    def add(self, uid=None, content_id=None, service_name=None, content_type=None, func=None, args=None):
         if self.log:
             self.log.info("Adding content: {} {}".format(uid, content_id))
+        
+        if not uid:
+            uid = self._generate_uid()
         
         entry = self.query_one_uid(uid)
         if not entry:
             entry = UID(uid=uid)
 
+        item = f"{uid}#{content_id}"
+        self.queue.append(item)
+        queue_pos = self.queue_get_pos(item)
+        
         entry.contents.append(Content(content_id=f"{uid}#{content_id}",
                                       service_name=service_name,
                                       queue_pos=queue_pos,
                                       content_type=content_type))
         db.session.add(entry)
         db.session.commit()
+
+        res_th = Thread(target=func, daemon=True, args=(args, uid, content_id, ))
+        res_th.start()
+        
+        return uid
 
     def add_admin(self, uid):
         if self.log:
@@ -92,14 +145,17 @@ class Database:
         if self.log:
             self.log.info("Updating content: {} {}".format(uid, content_id))
         
+        item = f"{uid}#{content_id}"
         entry = self.query_one_uid(uid)
         if entry and entry.contents:
             for _, c in enumerate(entry.contents):
-                if c.content_id == f"{uid}#{content_id}":
+                if c.content_id == item:
                     c.queue_pos = queue_pos
                     c.expiration = expiration
                     c.content = content
             db.session.commit()
+            if queue_pos == -1:
+                self.queue_rem_pos(item)
     
     def remove(self, uid, content_id=None):
         if self.log:
@@ -112,18 +168,6 @@ class Database:
             else:
                 db.session.delete(entry)
             db.session.commit()
-    
-    @staticmethod
-    def query_all_uid():
-        return UID.query.all()
-    
-    @staticmethod
-    def query_one_uid(uid):
-        return UID.query.filter_by(uid=uid).first()
-
-    @staticmethod
-    def query_one_content(uid, content_id):
-        return Content.query.filter_by(content_id=f"{uid}#{content_id}").first()
 
 
 def serve(host="0.0.0.0", port=7000, admin_pwd=None, service_db=None, log=None):
