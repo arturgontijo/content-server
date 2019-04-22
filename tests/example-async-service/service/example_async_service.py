@@ -147,11 +147,11 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         if content_id == "ADD":
             content = "Result: {}".format(request.a + request.b)
         elif content_id == "SUB":
-            content = "Result: {}".format(request.a + request.b)
+            content = "Result: {}".format(request.a - request.b)
         elif content_id == "MUL":
-            content = "Result: {}".format(request.a + request.b)
+            content = "Result: {}".format(request.a * request.b)
         elif content_id == "DIV":
-            content = "Result: {}".format(request.a + request.b)
+            content = "Result: {}".format(request.a / request.b)
         elif content_id == "URL":
             content = "https://singularitynet.io"
         
