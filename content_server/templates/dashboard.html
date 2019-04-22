@@ -41,11 +41,7 @@
                       <td class="text-center">{{ item["date"] }}</td>
                       <td class="text-center">{{ item["queue_pos"] }}</td>
                       <td class="text-center">{{ item["expiration"] }}</td>
-                      {% if item["content_type"] == "url" %}
-                        <td class="text-center"><a type="button" href='{{ item["content"] }}' class='{{ item["button_class"] }}'>{{ item["status"] }}</a></td>
-                      {% else %}
-                        <td class="text-center">{{ item["content"] }}</td>
-                      {% endif %}
+                      <td class="text-center">{{ item["content"] }}</td>
                     </tr>
                   {% endif %}
                 {% endfor %}
@@ -89,9 +85,9 @@
                       <td class="text-center">{{ item["queue_pos"] }}</td>
                       <td class="text-center">{{ item["expiration"] }}</td>
                       {% if item["content_type"] == "url" %}
-                        <td class="text-center"><a type="button" href='{{ item["content"] }}' class='{{ item["button_class"] }}'>{{ item["status"] }}</a></td>
+                        <td class="text-center"><a type="button" href='{{ item["content"] }}' class='{{ item["button_class"] }}' target="_blank">{{ item["status"] }}</a></td>
                       {% else %}
-                        <td class="text-center">{{ item["content"] }}</td>
+                        <td><button type="button" class='{{ item["button_class"] }}' data-toggle="modal" data-target="#responseModal" data-content='{{ item["content"] }}'>{{ item["status"] }}</button></td>
                       {% endif %}
                     </tr>
                   {% endif %}
@@ -103,6 +99,27 @@
       </div>
       <!-- /.box -->
     </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="responseModal" tabindex="-1" role="dialog" aria-labelledby="responseModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="responseModalLabel">Content</h2>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="form-group">
+            <textarea class="form-control" id="message-text" rows="5" style="resize: none" readonly></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -116,5 +133,16 @@
         "order": [[ 3, "asc" ]]
     } );
     })
+  </script>
+
+  <script>
+    $('#responseModal').on('show.bs.modal', function (event) {
+      var button = $(event.relatedTarget); // Button that triggered the modal
+      var content = button.data('content'); // Extract info from data-* attributes
+      // If necessary, you could initiate an AJAX request here (and then do the updating in a callback).
+      // Update the modal's content. We'll use jQuery here, but you could use a data binding library or other methods instead.
+      var modal = $(this);
+      modal.find('.modal-body textarea').val(content)
+    });
   </script>
 {% endblock %}

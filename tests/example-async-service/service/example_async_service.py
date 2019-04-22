@@ -162,7 +162,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                           expiration=datetime.strptime("05/10/2019 16:30:00", "%m/%d/%Y %H:%M:%S"),
                           content=content)
     
-        log.debug("add({})={} [Ready]".format(uid, content))
+        log.debug("{}({})={} [Ready]".format(content_id.lower(), uid, content))
 
 
 # The gRPC serve function.
