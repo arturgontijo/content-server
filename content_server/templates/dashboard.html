@@ -3,15 +3,10 @@
 
 {% block counter %}
 <span class="pull-right-container">
-  {% for item in content_list[-3:] %}
-    {% set status = item["queue_pos"] %}
-    {% if item["queue_pos"] == "Ready" %}
-      {% set status = "OK" %}
-    {% elif item["queue_pos"] == "Processing" %}
-      {% set status = "P" %}
+    {% if content_list %}
+      <small class="label label-primary pull-left">{{ content_list[-1]["queue_pos"] }}</small>
     {% endif %}
-    <small class="label label-primary pull-left">{{ status }}</small>
-  {% endfor %}
+    <small class="label label-success pull-left">{{ content_list|length }}</small>
 </span>
 {% endblock %}
 
@@ -21,45 +16,38 @@
       <div class="box">
         <div class="box-header">
           <h3 class="box-title">Content Delivery Table</h3>
-
-          <div class="box-tools">
-            <div class="input-group input-group-sm" style="width: 150px;">
-              <input type="text" name="table_search" class="form-control pull-right" placeholder="Search">
-              <div class="input-group-btn">
-                <button type="submit" class="btn btn-default"><i class="fa fa-search"></i></button>
-              </div>
-            </div>
-          </div>
-
         </div>
        <!-- /.box-header -->
-        <div class="box-body table-responsive no-padding">
-          <table class="table table-hover">
-            <tr>
-              <th class="text-center">UID</th>
-              <th class="text-center">Service</th>
-              <th class="text-center">ContentID</th>
-              <th class="text-center">Creation</th>
-              <th class="text-center">Queue</th>
-              <th class="text-center">Expiration</th>
-              <th class="text-center">Response</th>
-            </tr>
-            {% for item in content_list %}
-                <tr>
-                  <td class="text-center">{{ item["uid"] }}</td>
-                  <td class="text-center">{{ item["service"] }}</td>
-                  <td class="text-center">{{ item["content_id"].split("#")[-1] }}</td>
-                  <td class="text-center">{{ item["date"] }}</td>
-                  <td class="text-center">{{ item["queue_pos"] }}</td>
-                  <td class="text-center">{{ item["expiration"] }}</td>
-                  {% if item["content_type"] == "url" %}
-                    <td class="text-center"><a type="button" href='{{ item["content"] }}' class='{{ item["button_class"] }}'>{{ item["status"] }}</a></td>
-                  {% else %}
-                    <td class="text-center">{{ item["content"] }}</td>
-                  {% endif %}
-
-                </tr>
-            {% endfor %}
+        <div class="box-body">
+          <table id="content_table" class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th class="text-center">UID</th>
+                <th class="text-center">Service</th>
+                <th class="text-center">ContentID</th>
+                <th class="text-center">Creation</th>
+                <th class="text-center">Queue</th>
+                <th class="text-center">Expiration</th>
+                <th class="text-center">Response</th>
+              </tr>
+            </thead>
+            <tbody>
+                {% for item in content_list %}
+                    <tr>
+                      <td class="text-center">{{ item["uid"] }}</td>
+                      <td class="text-center">{{ item["service"] }}</td>
+                      <td class="text-center">{{ item["content_id"].split("#")[-1] }}</td>
+                      <td class="text-center">{{ item["date"] }}</td>
+                      <td class="text-center">{{ item["queue_pos"] }}</td>
+                      <td class="text-center">{{ item["expiration"] }}</td>
+                      {% if item["content_type"] == "url" %}
+                        <td class="text-center"><a type="button" href='{{ item["content"] }}' class='{{ item["button_class"] }}'>{{ item["status"] }}</a></td>
+                      {% else %}
+                        <td class="text-center">{{ item["content"] }}</td>
+                      {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
           </table>
         </div>
         <!-- /.box-body -->
@@ -67,4 +55,14 @@
       <!-- /.box -->
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    $(function () {
+      $('#content_table').DataTable( {
+        "order": [[ 3, "asc" ]]
+    } );
+    })
+  </script>
 {% endblock %}

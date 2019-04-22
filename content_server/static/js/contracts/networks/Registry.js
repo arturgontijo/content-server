@@ -1,1 +1,0 @@
-const RegistryNetworks = '{"3":{"events":{},"links":{},"address":"0x5156fde2ca71da4398f8c76763c41bc9633875e4","transactionHash":"0x43616b59359b082cf65ec57396fb7f0bf3cd700bf3058808cdd2ddf8b473028c"},"42":{"events":{},"links":{},"address":"0xe331bf20044a5b24c1a744abc90c1fd711d2c08d","transactionHash":"0xb98bcff3cfd65916b50f85f3bb89c83252b24b74f42ede4c4badd2456cf2bf9a"}}'

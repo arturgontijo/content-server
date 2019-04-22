@@ -3,9 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>AdminLTE 2 | Log in</title>
+  <title>SingularityNET Content Server - Login</title>
   <!-- Tell the browser to be responsive to screen width -->
   <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+
+  <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/favicon.ico') }}"/>
+
   <!-- Bootstrap 3.3.7 -->
   <link rel="stylesheet" href="../static/css/bootstrap.min.css">
   <!-- Font Awesome -->
@@ -31,7 +34,7 @@
     <form action="/login" method="post">
       <div class="form-group has-feedback">
         <input name="uid" type="text" class="form-control" placeholder="UID">
-        <span class="glyphicon glyphicon-envelope form-control-feedback"></span>
+        <span class="glyphicon glyphicon-user form-control-feedback"></span>
       </div>
       <div class="row">
         <div class="col-xs-4" align="center">

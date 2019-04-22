@@ -76,9 +76,9 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # Re-use the same UID to register another entry
         result.uid = service_db.add(uid=result.uid,
-                                    content_id="EXTRA",
+                                    content_id="URL",
                                     service_name="example_async_service",
-                                    content_type="text",
+                                    content_type="url",
                                     func=self.process_request,
                                     args=request)
 
@@ -132,37 +132,37 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
     @staticmethod
     def process_request(request, uid, content_id):
-    
+        # Waiting for queue
         item = f"{uid}#{content_id}"
         queue_pos = service_db.queue_get_pos(item)
         while queue_pos != 0:
             queue_pos = service_db.queue_get_pos(item)
             time.sleep(1)
     
-        delay = randint(30, 120)
+        delay = randint(30, 60)
         print("Delay: ", delay)
         time.sleep(delay)
     
-        result = 0
+        content = ""
         if content_id == "ADD":
-            result = request.a + request.b
+            content = "Result: {}".format(request.a + request.b)
         elif content_id == "SUB":
-            result = request.a - request.b
+            content = "Result: {}".format(request.a + request.b)
         elif content_id == "MUL":
-            result = request.a * request.b
+            content = "Result: {}".format(request.a + request.b)
         elif content_id == "DIV":
-            result = request.a / request.b
-        elif content_id == "EXTRA":
-            result = "SomeExtraContent"
+            content = "Result: {}".format(request.a + request.b)
+        elif content_id == "URL":
+            content = "https://singularitynet.io"
         
         # Got the response, update DB with expiration and content
         service_db.update(uid,
                           content_id,
                           queue_pos=-1,
                           expiration=datetime.strptime("05/10/2019 16:30:00", "%m/%d/%Y %H:%M:%S"),
-                          content="Result: {}".format(result))
+                          content=content)
     
-        log.debug("add({})={} [Ready]".format(uid, result))
+        log.debug("add({})={} [Ready]".format(uid, content))
 
 
 # The gRPC serve function.

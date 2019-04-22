@@ -211,7 +211,7 @@ def serve(host="0.0.0.0", port=7000, admin_pwd=None, service_db=None, log=None):
                     "button_class": f"btn btn-block btn-{btn_type} btn-sm {btn_disabled}",
                     "status": status,
                     "content_type": c.content_type,
-                    "content": content,
+                    "content": content if content is not None else position,
                     "expiration": expiration,
                     "date": c.creation.strftime("%m/%d/%Y, %H:%M:%S")
                 }
