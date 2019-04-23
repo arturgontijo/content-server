@@ -97,7 +97,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                             args={"request": request})
 
         # Re-use the same UID to register another entry (via HTTP POST).
-        content_id = "SUB_URL"
+        content_id = "POST_SUB_URL"
         r = requests.post("http://localhost:7001/post_add",
                           data={
                               "user_pwd": "admin",
@@ -108,7 +108,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                           })
         
         # Initiate the thread that will handle the request
-        sub_post_th = Thread(target=self.process_request_post, daemon=True, args=(request, result.uid, content_id))
+        sub_post_th = Thread(target=self.process_request_post, daemon=True, args=(result.uid, content_id, request))
         sub_post_th.start()
 
         log.info("sub({},{},{})=Pending {}".format(result.uid, request.a, request.b, r.status_code))
@@ -185,7 +185,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         log.info("{}({})={} [Ready]".format(content_id.lower(), uid, content))
 
     @staticmethod
-    def process_request_post(request, uid, content_id):
+    def process_request_post(uid, content_id, request):
         # Waiting for queue
         r = requests.post("http://localhost:7001/queue_get_pos",
                           data={

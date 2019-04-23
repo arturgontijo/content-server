@@ -40,17 +40,17 @@ class UID(db.Model):
     
 class Content(db.Model):
     __tablename__ = "content"
-    content_id = db.Column(db.String(20), primary_key=True, nullable=False)
+    content_id = db.Column(db.String(41), primary_key=True, nullable=False)
     service_name = db.Column(db.String(32), default="")
     queue_pos = db.Column(db.Integer, nullable=False)
     expiration = db.Column(db.DateTime)
     creation = db.Column(db.DateTime, nullable=False, default=datetime.now)
     content_type = db.Column(db.String(10), default="text")
     content = db.Column(db.String(4096), default=None)
-    content_uid = db.Column(db.Integer, db.ForeignKey('uid.uid'), nullable=False)
+    content_uid = db.Column(db.String(20), db.ForeignKey('uid.uid'), nullable=False)
     
     def __repr__(self):
-        return "<UID {}><Queue {}><Expiration {}><Creation {}><Content {}>".format(
+        return "UID: {}\nQueue: {}\nExpiration: {}\nCreation: {}\nContent: {}".format(
             self.content_uid,
             self.queue_pos,
             self.expiration,
@@ -168,6 +168,7 @@ class ContentServer:
     
     @staticmethod
     def _get_delta_str(time_str):
+        """ Receive and parse a string to timedelta() """
         regex = re.compile(r'((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s)?')
         parts = regex.match(time_str)
         if not parts:
@@ -226,9 +227,9 @@ class ContentServer:
                     if not c.expiration:
                         btn_disabled = "disabled"
                     elif c.expiration <= datetime.now():
+                        position = status = "Expired"
                         btn_type = "danger"
                         btn_disabled = "disabled"
-                        status = "Expired"
                         content = ""
                         expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S")
                     
@@ -256,48 +257,43 @@ class ContentServer:
         @app.route("/", methods=["GET", "POST"])
         def root():
             if "logged" in session and session["logged"]:
-                admin = False
-                if session["uid"] == self.admin_pwd:
-                    admin = True
-                    content_list = []
-                    for uid_entry in self.query_all_uid():
-                        content_list.extend(get_content_list(uid_entry.uid))
-                else:
-                    content_list = get_content_list(session["uid"])
+                return redirect("/dashboard")
+            else:
+                return render_template("login.html")
+
+        @app.route("/dashboard", methods=["GET", "POST"])
+        def dashboard():
+            uid = None
+            if request.method == "POST":
+                uid = request.form.get("uid")
+            elif "logged" in session and session["logged"]:
+                uid = session["uid"]
+                
+            admin = False
+            if uid == self.admin_pwd:
+                admin = True
+                content_list = []
+                for uid_entry in self.query_all_uid():
+                    content_list.extend(get_content_list(uid_entry.uid))
+                session["uid"] = uid
+                session["logged"] = True
                 return render_template("dashboard.html",
                                        admin=admin,
                                        content_list=content_list)
-            return render_template("login.html")
-        
-        @app.route("/login", methods=["GET", "POST"])
-        def login():
-            if request.method == "POST":
-                uid = request.form.get("uid")
-                admin = False
-                if uid == self.admin_pwd:
-                    admin = True
-                    content_list = []
-                    for uid_entry in self.query_all_uid():
-                        content_list.extend(get_content_list(uid_entry.uid))
-                    session["uid"] = uid
-                    session["logged"] = True
-                    return render_template("dashboard.html",
-                                           admin=admin,
-                                           content_list=content_list)
-                elif check_uid(uid):
-                    session["uid"] = uid
-                    session["logged"] = True
-                    content_list = get_content_list(session["uid"])
-                    return render_template("dashboard.html",
-                                           admin=admin,
-                                           content_list=content_list)
-            return render_template("login.html")
+            elif check_uid(uid):
+                session["uid"] = uid
+                session["logged"] = True
+                content_list = get_content_list(session["uid"])
+                return render_template("dashboard.html",
+                                       admin=admin,
+                                       content_list=content_list)
+            return redirect("/")
         
         @app.route("/logout")
         def logout():
             session["logged"] = False
             session["uid"] = -1
-            return render_template("login.html")
+            return redirect("/")
     
         # POST API - Add new entry in the DB
         @app.route("/post_add", methods=["POST"])

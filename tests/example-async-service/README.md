@@ -1,4 +1,4 @@
-# example-service
+# example-async-service
 
 Simple arithmetic service compatible with SingularityNET
 

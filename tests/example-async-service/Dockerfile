@@ -20,9 +20,9 @@ RUN SNETD_VERSION=`curl -s https://api.github.com/repos/singnet/snet-daemon/rele
     mv snet-daemon-${SNETD_VERSION}-linux-amd64/snetd /usr/bin/snetd
 
 RUN cd ${SINGNET_REPOS} && \
-    git clone https://github.com/singnet/example-service.git && \
-    cd example-service && \
+    git clone https://github.com/arturgontijo/content-server && \
+    cd content-server/tests/example-async-service && \
     pip3 install -r requirements.txt && \
     sh buildproto.sh
 
-WORKDIR ${SINGNET_REPOS}/example-service
+WORKDIR ${SINGNET_REPOS}/content-server/tests/example-async-service
