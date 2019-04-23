@@ -71,7 +71,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                             service_name="example_async_service",
                             content_type="text",
                             func=self.process_request,
-                            args=request)
+                            args={"request": request})
 
         # Re-use the same UID to register another entry.
         result.uid = cs.add(uid=result.uid,
@@ -79,7 +79,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                             service_name="example_async_service",
                             content_type="url",
                             func=self.process_request,
-                            args=request)
+                            args={"request": request})
 
         log.info("add({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
@@ -94,7 +94,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                             service_name="example_async_service",
                             content_type="text",
                             func=self.process_request,
-                            args=request)
+                            args={"request": request})
 
         # Re-use the same UID to register another entry (via HTTP POST).
         content_id = "SUB_URL"
@@ -124,7 +124,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                             service_name="example_async_service",
                             content_type="text",
                             func=self.process_request,
-                            args=request)
+                            args={"request": request})
 
         log.info("mul({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
@@ -139,13 +139,13 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                             service_name="example_async_service",
                             content_type="text",
                             func=self.process_request,
-                            args=request)
+                            args={"request": request})
 
         log.info("div({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
 
     @staticmethod
-    def process_request(request, uid, content_id):
+    def process_request(uid, content_id, **kwargs):
         # Waiting for queue
         item = f"{uid}#{content_id}"
         queue_pos = cs.queue_get_pos(item)
@@ -156,18 +156,24 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         delay = randint(10, 30)
         log.info("Fake Processing Delay: {}".format(delay))
         time.sleep(delay)
-    
+
+        request = None
+        for k, v in kwargs.items():
+            if k == "request":
+                request = v
+
         content = ""
-        if content_id == "ADD":
-            content = "Result: {}".format(request.a + request.b)
-        elif content_id == "SUB":
-            content = "Result: {}".format(request.a - request.b)
-        elif content_id == "MUL":
-            content = "Result: {}".format(request.a * request.b)
-        elif content_id == "DIV":
-            content = "Result: {}".format(request.a / request.b)
-        elif "URL" in content_id:
-            content = "https://singularitynet.io"
+        if request:
+            if content_id == "ADD":
+                content = "Result: {}".format(request.a + request.b)
+            elif content_id == "SUB":
+                content = "Result: {}".format(request.a - request.b)
+            elif content_id == "MUL":
+                content = "Result: {}".format(request.a * request.b)
+            elif content_id == "DIV":
+                content = "Result: {}".format(request.a / request.b)
+            elif "URL" in content_id:
+                content = "https://singularitynet.io"
     
         # Got the response, update DB with expiration and content
         cs.update(uid,

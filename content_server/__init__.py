@@ -114,7 +114,7 @@ class ContentServer:
         db.session.commit()
 
         if func:
-            res_th = Thread(target=func, daemon=True, args=(args, uid, content_id, ))
+            res_th = Thread(target=func, daemon=True, args=(uid, content_id, ), kwargs=args)
             res_th.start()
         
         return uid
