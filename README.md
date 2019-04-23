@@ -1,2 +1,2 @@
 # content-server
-Flask+Bootstrap+SQLite+Boto3 content server.
+Flask+Bootstrap+SQLAlchemy Content Server.
