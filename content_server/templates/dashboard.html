@@ -28,7 +28,7 @@
                 <th class="text-center">Creation</th>
                 <th class="text-center">Queue</th>
                 <th class="text-center">Expiration</th>
-                <th class="text-center">Response</th>
+                <th class="text-center">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -41,7 +41,7 @@
                       <td class="text-center">{{ item["date"] }}</td>
                       <td class="text-center">{{ item["queue_pos"] }}</td>
                       <td class="text-center">{{ item["expiration"] }}</td>
-                      <td class="text-center">{{ item["content"] }}</td>
+                      <td class="text-center"><a type="button" href='' class='{{ item["button_class"] }}' target="_blank">{{ item["status"] }}</a></td>
                     </tr>
                   {% endif %}
                 {% endfor %}
@@ -71,7 +71,10 @@
                 <th class="text-center">Creation</th>
                 <th class="text-center">Queue</th>
                 <th class="text-center">Expiration</th>
-                <th class="text-center">Response</th>
+                <th class="text-center">Status</th>
+                {% if admin %}
+                  <th class="text-center">Delete</th>
+                {% endif %}
               </tr>
             </thead>
             <tbody>
@@ -88,6 +91,13 @@
                         <td class="text-center"><a type="button" href='{{ item["content"] }}' class='{{ item["button_class"] }}' target="_blank">{{ item["status"] }}</a></td>
                       {% else %}
                         <td><button type="button" class='{{ item["button_class"] }}' data-toggle="modal" data-target="#responseModal" data-content='{{ item["content"] }}'>{{ item["status"] }}</button></td>
+                      {% endif %}
+                      {% if admin %}
+                        {% if item["status"] == "Expired" %}
+                          <td class="text-center"><a type="button" href='/post_remove?uid={{ item["uid"] }}&content_id={{ item["content_id"].split("#")[-1] }}' class='btn btn-block btn-danger btn-sm'>x</a></td>
+                        {% else %}
+                          <td class="text-center"><a type="button" href='' class='btn btn-block btn-danger btn-sm disabled'>x</a></td>
+                        {% endif %}
                       {% endif %}
                     </tr>
                   {% endif %}
@@ -128,10 +138,13 @@
     $(function () {
       $('#queue_table').DataTable( {
         "order": [[ 3, "asc" ]]
-    } );
+      });
       $('#ready_table').DataTable( {
-        "order": [[ 3, "desc" ]]
-    } );
+        "order": [[ 3, "desc" ]],
+        "columnDefs": [
+          {"className": "dt-center", "targets": "_all"}
+        ]
+      });
     })
   </script>
 

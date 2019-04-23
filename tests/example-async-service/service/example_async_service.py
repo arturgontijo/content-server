@@ -5,12 +5,11 @@ import grpc
 import concurrent.futures as futures
 
 from threading import Thread
-from datetime import datetime
 import time
 from random import randint
 import requests
-from content_server import Database as content_server_db
-from content_server import serve as content_server_serve
+
+from content_server import ContentServer
 
 import service.common
 
@@ -18,12 +17,11 @@ import service.common
 import service.service_spec.example_async_service_pb2_grpc as grpc_bt_grpc
 from service.service_spec.example_async_service_pb2 import Result
 
-logging.basicConfig(level=10, format="%(asctime)s - [%(levelname)8s] - %(name)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - [%(levelname)8s] - %(name)s - %(message)s")
 log = logging.getLogger("example_async_service")
 
-# Content Server DB
-service_db = None
-queue = []
+# Content Server
+cs = None
 
 """
 Simple arithmetic service to test the Snet Daemon (gRPC), dApp and/or Snet-CLI.
@@ -58,7 +56,7 @@ Calling service...
 class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
     def __init__(self):
         # Just for debugging purpose.
-        log.debug("CalculatorServicer created")
+        log.info("CalculatorServicer created")
 
     # The method that will be exposed to the snet-cli call command.
     # request: incoming data
@@ -69,21 +67,21 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = service_db.add(content_id="ADD",
-                                    service_name="example_async_service",
-                                    content_type="text",
-                                    func=self.process_request,
-                                    args=request)
+        result.uid = cs.add(content_id="ADD",
+                            service_name="example_async_service",
+                            content_type="text",
+                            func=self.process_request,
+                            args=request)
 
         # Re-use the same UID to register another entry.
-        result.uid = service_db.add(uid=result.uid,
-                                    content_id="ADD_URL",
-                                    service_name="example_async_service",
-                                    content_type="url",
-                                    func=self.process_request,
-                                    args=request)
+        result.uid = cs.add(uid=result.uid,
+                            content_id="ADD_URL",
+                            service_name="example_async_service",
+                            content_type="url",
+                            func=self.process_request,
+                            args=request)
 
-        log.debug("add({},{},{})=Pending".format(result.uid, request.a, request.b))
+        log.info("add({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
 
     def sub(self, request, context):
@@ -92,27 +90,28 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = service_db.add(content_id="SUB",
-                                    service_name="example_async_service",
-                                    content_type="text",
-                                    func=self.process_request,
-                                    args=request)
+        result.uid = cs.add(content_id="SUB",
+                            service_name="example_async_service",
+                            content_type="text",
+                            func=self.process_request,
+                            args=request)
 
         # Re-use the same UID to register another entry (via HTTP POST).
         content_id = "SUB_URL"
         r = requests.post("http://localhost:7001/post_add",
                           data={
+                              "user_pwd": "admin",
                               "uid": result.uid,
                               "content_id": content_id,
                               "service_name": "example_async_service",
                               "content_type": "url"
                           })
-        # Initiate Content Server (Database and Server)
+        
+        # Initiate the thread that will handle the request
         sub_post_th = Thread(target=self.process_request_post, daemon=True, args=(request, result.uid, content_id))
         sub_post_th.start()
-        log.info("POST_ADD ({},{}) STATUS_CODE: {}".format(result.uid, content_id, r.status_code))
 
-        log.debug("sub({},{},{})=Pending".format(result.uid, request.a, request.b))
+        log.info("sub({},{},{})=Pending {}".format(result.uid, request.a, request.b, r.status_code))
         return result
 
     def mul(self, request, context):
@@ -121,13 +120,13 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = service_db.add(content_id="MUL",
-                                    service_name="example_async_service",
-                                    content_type="text",
-                                    func=self.process_request,
-                                    args=request)
+        result.uid = cs.add(content_id="MUL",
+                            service_name="example_async_service",
+                            content_type="text",
+                            func=self.process_request,
+                            args=request)
 
-        log.debug("mul({},{},{})=Pending".format(result.uid, request.a, request.b))
+        log.info("mul({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
 
     def div(self, request, context):
@@ -136,26 +135,26 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = service_db.add(content_id="DIV",
-                                    service_name="example_async_service",
-                                    content_type="text",
-                                    func=self.process_request,
-                                    args=request)
+        result.uid = cs.add(content_id="DIV",
+                            service_name="example_async_service",
+                            content_type="text",
+                            func=self.process_request,
+                            args=request)
 
-        log.debug("div({},{},{})=Pending".format(result.uid, request.a, request.b))
+        log.info("div({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
 
     @staticmethod
     def process_request(request, uid, content_id):
         # Waiting for queue
         item = f"{uid}#{content_id}"
-        queue_pos = service_db.queue_get_pos(item)
+        queue_pos = cs.queue_get_pos(item)
         while queue_pos != 0:
-            queue_pos = service_db.queue_get_pos(item)
+            queue_pos = cs.queue_get_pos(item)
             time.sleep(1)
     
         delay = randint(10, 30)
-        print("Delay: ", delay)
+        log.info("Fake Processing Delay: {}".format(delay))
         time.sleep(delay)
     
         content = ""
@@ -171,13 +170,13 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
             content = "https://singularitynet.io"
     
         # Got the response, update DB with expiration and content
-        service_db.update(uid,
-                          content_id,
-                          queue_pos=-1,
-                          expiration=datetime.strptime("05/10/2019 16:30:00", "%m/%d/%Y %H:%M:%S"),
-                          content=content)
+        cs.update(uid,
+                  content_id,
+                  queue_pos=-1,
+                  expiration="1d12h",
+                  content=content)
     
-        log.debug("{}({})={} [Ready]".format(content_id.lower(), uid, content))
+        log.info("{}({})={} [Ready]".format(content_id.lower(), uid, content))
 
     @staticmethod
     def process_request_post(request, uid, content_id):
@@ -195,10 +194,10 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                                   "content_id": content_id
                               })
             queue_pos = int(r.text)
-            time.sleep(5)
+            time.sleep(1)
     
         delay = randint(10, 30)
-        print("Delay: ", delay)
+        log.info("Fake Processing Delay: {}".format(delay))
         time.sleep(delay)
     
         content = ""
@@ -216,15 +215,15 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         # Got the response, update DB with expiration and content
         r = requests.post("http://localhost:7001/post_update",
                           data={
+                              "user_pwd": "admin",
                               "uid": uid,
                               "content_id": content_id,
                               "queue_pos": -1,
-                              "expiration": "05/10/2019 16:30:00",
+                              "expiration": "2m",
                               "content": content
                           })
-        log.info("POST_UPDATE ({},{}) STATUS_CODE: {}".format(uid, content_id, r.status_code))
     
-        log.debug("{}({})={} [Ready]".format(content_id.lower(), uid, content))
+        log.info("{}({})={} [Ready {}]".format(content_id.lower(), uid, content, r.status_code))
 
 
 # The gRPC serve function.
@@ -243,14 +242,15 @@ def serve(max_workers=10, port=7777):
 
 
 def init_content_server():
+    global cs
+    cs = ContentServer(host="0.0.0.0", port=7001, admin_pwd="admin", log=log)
+    
     log.info("Creating Content Server Database...")
-    global service_db
-    service_db = content_server_db(log=log)
-    service_db.create(drop=True)
+    cs.create(drop=True)
 
+    # Start serving at 0.0.0.0:7001 with "admin" as the admin password
     log.info("Starting Content Server...")
-    # Start serving at localhost:7001 with "admin" as the admin password
-    content_server_serve(host="localhost", port=7001, admin_pwd="admin", service_db=service_db)
+    cs.serve()
 
 
 if __name__ == "__main__":
