@@ -201,7 +201,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                           })
         queue_pos = int(r.text)
         while queue_pos != 0:
-            r = requests.post("http://localhost:7001/queue_get_pos",
+            r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos",
                               data={
                                   "uid": uid,
                                   "content_id": content_id
