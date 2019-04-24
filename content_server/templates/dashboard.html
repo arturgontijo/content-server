@@ -23,8 +23,9 @@
             <thead>
               <tr>
                 <th class="text-center">UID</th>
-                <th class="text-center">Service</th>
                 <th class="text-center">ContentID</th>
+                <th class="text-center">Service</th>
+                <th class="text-center">Method</th>
                 <th class="text-center">Creation</th>
                 <th class="text-center">Queue</th>
                 <th class="text-center">Expiration</th>
@@ -36,8 +37,9 @@
                   {% if item["queue_pos"] != "Ready" and item["queue_pos"] != "Expired" %}
                     <tr>
                       <td class="text-center">{{ item["uid"] }}</td>
+                      <td class="text-center">{{ item["content_id"] }}</td>
                       <td class="text-center">{{ item["service"] }}</td>
-                      <td class="text-center">{{ item["content_id"].split("#")[-1] }}</td>
+                      <td class="text-center">{{ item["rpc_method"] }}</td>
                       <td class="text-center">{{ item["date"] }}</td>
                       <td class="text-center">{{ item["queue_pos"] }}</td>
                       <td class="text-center">{{ item["expiration"] }}</td>
@@ -66,8 +68,9 @@
             <thead>
               <tr>
                 <th class="text-center">UID</th>
-                <th class="text-center">Service</th>
                 <th class="text-center">ContentID</th>
+                <th class="text-center">Service</th>
+                <th class="text-center">Method</th>
                 <th class="text-center">Creation</th>
                 <th class="text-center">Queue</th>
                 <th class="text-center">Expiration</th>
@@ -82,8 +85,9 @@
                   {% if item["queue_pos"] == "Ready" or item["queue_pos"] == "Expired" %}
                     <tr>
                       <td class="text-center">{{ item["uid"] }}</td>
+                      <td class="text-center">{{ item["content_id"] }}</td>
                       <td class="text-center">{{ item["service"] }}</td>
-                      <td class="text-center">{{ item["content_id"].split("#")[-1] }}</td>
+                      <td class="text-center">{{ item["rpc_method"] }}</td>
                       <td class="text-center">{{ item["date"] }}</td>
                       <td class="text-center">{{ item["queue_pos"] }}</td>
                       <td class="text-center">{{ item["expiration"] }}</td>
@@ -94,7 +98,7 @@
                       {% endif %}
                       {% if admin %}
                         {% if item["status"] == "Expired" %}
-                          <td class="text-center"><a type="button" href='/post_remove?uid={{ item["uid"] }}&content_id={{ item["content_id"].split("#")[-1] }}' class='btn btn-block btn-danger btn-sm'>x</a></td>
+                          <td class="text-center"><a type="button" href='/post_remove?content_id={{ item["content_id"] }}' class='btn btn-block btn-danger btn-sm'>x</a></td>
                         {% else %}
                           <td class="text-center"><a type="button" href='' class='btn btn-block btn-danger btn-sm disabled'>x</a></td>
                         {% endif %}
@@ -137,10 +141,10 @@
   <script>
     $(function () {
       $('#queue_table').DataTable( {
-        "order": [[ 3, "asc" ]]
+        "order": [[ 1, "asc" ]]
       });
       $('#ready_table').DataTable( {
-        "order": [[ 3, "desc" ]],
+        "order": [[ 1, "desc" ]],
         "columnDefs": [
           {"className": "dt-center", "targets": "_all"}
         ]

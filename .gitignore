@@ -104,3 +104,4 @@ venv.bak/
 .mypy_cache/
 
 content_db/
+**/service_spec/*.py

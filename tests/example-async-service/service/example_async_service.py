@@ -70,20 +70,20 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = cs.add(uid=request.uid,
-                            content_id="ADD",
-                            service_name="example_async_service",
-                            content_type="text",
-                            func=self.process_request,
-                            args={"request": request})
+        result.uid, _ = cs.add(uid=request.uid,
+                               service_name="example_async_service",
+                               rpc_method="add",
+                               content_type="text",
+                               func=self.process_request,
+                               args={"request": request})
 
         # Re-use the same UID to register another entry.
-        result.uid = cs.add(uid=result.uid,
-                            content_id="ADD_URL",
-                            service_name="example_async_service",
-                            content_type="url",
-                            func=self.process_request,
-                            args={"request": request})
+        result.uid, _ = cs.add(uid=result.uid,
+                               service_name="example_async_service",
+                               rpc_method="add_url",
+                               content_type="url",
+                               func=self.process_request,
+                               args={"request": request})
 
         log.info("add({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
@@ -94,26 +94,27 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = cs.add(uid=request.uid,
-                            content_id="SUB",
-                            service_name="example_async_service",
-                            content_type="text",
-                            func=self.process_request,
-                            args={"request": request})
+        result.uid, _ = cs.add(uid=request.uid,
+                               service_name="example_async_service",
+                               rpc_method="sub",
+                               content_type="text",
+                               func=self.process_request,
+                               args={"request": request})
 
         # Re-use the same UID to register another entry (via HTTP POST).
-        content_id = "POST_SUB_URL"
+        rpc_method = "post_sub_url"
         r = requests.post(f"http://{cs_host}:{cs_port}/post_add",
                           data={
                               "user_pwd": admin_pwd,
                               "uid": result.uid,
-                              "content_id": content_id,
                               "service_name": "example_async_service",
+                              "rpc_method": rpc_method,
                               "content_type": "url"
                           })
-        
+        [_, content_id] = r.text.split("&")
+
         # Initiate the thread that will handle the request
-        sub_post_th = Thread(target=self.process_request_post, daemon=True, args=(result.uid, content_id, request))
+        sub_post_th = Thread(target=self.process_request_post, daemon=True, args=(content_id, rpc_method, request))
         sub_post_th.start()
 
         log.info("sub({},{},{})=Pending {}".format(result.uid, request.a, request.b, r.status_code))
@@ -125,12 +126,12 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = cs.add(uid=request.uid,
-                            content_id="MUL",
-                            service_name="example_async_service",
-                            content_type="text",
-                            func=self.process_request,
-                            args={"request": request})
+        result.uid, _ = cs.add(uid=request.uid,
+                               service_name="example_async_service",
+                               rpc_method="mul",
+                               content_type="text",
+                               func=self.process_request,
+                               args={"request": request})
 
         log.info("mul({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
@@ -141,23 +142,22 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = cs.add(uid=request.uid,
-                            content_id="DIV",
-                            service_name="example_async_service",
-                            content_type="text",
-                            func=self.process_request,
-                            args={"request": request})
+        result.uid, _ = cs.add(uid=request.uid,
+                               service_name="example_async_service",
+                               rpc_method="div",
+                               content_type="text",
+                               func=self.process_request,
+                               args={"request": request})
 
         log.info("div({},{},{})=Pending".format(result.uid, request.a, request.b))
         return result
 
     @staticmethod
-    def process_request(uid, content_id, **kwargs):
+    def process_request(content_id, rpc_method, **kwargs):
         # Waiting for queue
-        item = f"{uid}#{content_id}"
-        queue_pos = cs.queue_get_pos(item)
+        queue_pos = cs.queue_get_pos(content_id)
         while queue_pos != 0:
-            queue_pos = cs.queue_get_pos(item)
+            queue_pos = cs.queue_get_pos(content_id)
             time.sleep(1)
     
         delay = randint(10, 30)
@@ -171,41 +171,32 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         content = ""
         if request:
-            if content_id == "ADD":
+            if rpc_method == "add":
                 content = "Result: {}".format(request.a + request.b)
-            elif content_id == "SUB":
+            elif rpc_method == "sub":
                 content = "Result: {}".format(request.a - request.b)
-            elif content_id == "MUL":
+            elif rpc_method == "mul":
                 content = "Result: {}".format(request.a * request.b)
-            elif content_id == "DIV":
+            elif rpc_method == "div":
                 content = "Result: {}".format(request.a / request.b)
-            elif "URL" in content_id:
+            elif "url" in rpc_method:
                 content = "https://singularitynet.io"
     
         # Got the response, update DB with expiration and content
-        cs.update(uid,
-                  content_id,
+        cs.update(content_id,
                   queue_pos=-1,
                   expiration="1d12h",
                   content=content)
     
-        log.info("{}({})={} [Ready]".format(content_id.lower(), uid, content))
+        log.info("{}({})={} [Ready]".format(rpc_method, content_id, content))
 
     @staticmethod
-    def process_request_post(uid, content_id, request):
+    def process_request_post(content_id, rpc_method, request):
         # Waiting for queue
-        r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos",
-                          data={
-                              "uid": uid,
-                              "content_id": content_id
-                          })
+        r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos", data={"content_id": content_id})
         queue_pos = int(r.text)
         while queue_pos != 0:
-            r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos",
-                              data={
-                                  "uid": uid,
-                                  "content_id": content_id
-                              })
+            r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos", data={"content_id": content_id})
             queue_pos = int(r.text)
             time.sleep(1)
     
@@ -214,29 +205,28 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         time.sleep(delay)
     
         content = ""
-        if content_id == "ADD":
+        if rpc_method == "add":
             content = "Result: {}".format(request.a + request.b)
-        elif content_id == "SUB":
+        elif rpc_method == "sub":
             content = "Result: {}".format(request.a - request.b)
-        elif content_id == "MUL":
+        elif rpc_method == "mul":
             content = "Result: {}".format(request.a * request.b)
-        elif content_id == "DIV":
+        elif rpc_method == "div":
             content = "Result: {}".format(request.a / request.b)
-        elif "URL" in content_id:
+        elif "url" in rpc_method:
             content = "https://singularitynet.io"
         
         # Got the response, update DB with expiration and content
         r = requests.post(f"http://{cs_host}:{cs_port}/post_update",
                           data={
                               "user_pwd": admin_pwd,
-                              "uid": uid,
                               "content_id": content_id,
                               "queue_pos": -1,
                               "expiration": "2m",
                               "content": content
                           })
     
-        log.info("{}({})={} [Ready {}]".format(content_id.lower(), uid, content, r.status_code))
+        log.info("{}({})={} [Ready {}]".format(rpc_method, content_id, content, r.status_code))
 
 
 # The gRPC serve function.

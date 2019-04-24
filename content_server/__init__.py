@@ -40,8 +40,9 @@ class UID(db.Model):
     
 class Content(db.Model):
     __tablename__ = "content"
-    content_id = db.Column(db.String(41), primary_key=True, nullable=False)
+    content_id = db.Column(db.Integer, primary_key=True, nullable=False)
     service_name = db.Column(db.String(32), default="")
+    rpc_method = db.Column(db.String(32), default="")
     queue_pos = db.Column(db.Integer, nullable=False)
     expiration = db.Column(db.DateTime)
     creation = db.Column(db.DateTime, nullable=False, default=datetime.now)
@@ -50,7 +51,8 @@ class Content(db.Model):
     content_uid = db.Column(db.String(20), db.ForeignKey('uid.uid'), nullable=False)
     
     def __repr__(self):
-        return "UID: {}\nQueue: {}\nExpiration: {}\nCreation: {}\nContent: {}".format(
+        return "id: {}\nUID: {}\nQueue: {}\nExpiration: {}\nCreation: {}\nContent: {}".format(
+            self.id,
             self.content_uid,
             self.queue_pos,
             self.expiration,
@@ -59,14 +61,14 @@ class Content(db.Model):
 
 
 class ContentServer:
-    def __init__(self, host="localhost", port=7000, admin_pwd="admin", queue=None, log=None):
+    def __init__(self, host="localhost", port=7000, admin_pwd="admin", queues=None, log=None):
         self.host = host
         self.port = port
         self.admin_pwd = admin_pwd
         
-        self.queue = []
-        if queue:
-            self.queue = queue
+        self.queues = dict()
+        if queues:
+            self.queues = queues
 
         self.log = log
 
@@ -88,73 +90,79 @@ class ContentServer:
         return UID.query.filter_by(uid=uid).first()
 
     @staticmethod
-    def query_one_content(uid, content_id):
-        return Content.query.filter_by(content_id=f"{uid}#{content_id}").first()
+    def query_all_content(uid):
+        return Content.query.filter_by(content_uid=uid).all()
     
-    def add(self, uid=None, content_id=None, service_name=None, content_type=None, func=None, args=None):
+    @staticmethod
+    def query_one_content(content_id):
+        return Content.query.filter_by(content_id=content_id).first()
+    
+    def add(self, uid=None, service_name="test_service", rpc_method=None, content_type=None, func=None, args=None):
         if not uid:
             uid = self._generate_uid()
 
         if self.log:
-            self.log.info("Adding content: {} {}".format(uid, content_id))
+            self.log.info("Adding content: {} {}".format(uid, rpc_method))
         
         entry = self.query_one_uid(uid)
         if not entry:
             entry = UID(uid=uid)
 
-        item = f"{uid}#{content_id}"
-        self.queue.append(item)
-        queue_pos = self.queue_get_pos(item)
-        
-        entry.contents.append(Content(content_id=f"{uid}#{content_id}",
-                                      service_name=service_name,
-                                      queue_pos=queue_pos,
-                                      content_type=content_type))
+        if service_name not in self.queues:
+            self.queues[service_name] = []
+            
+        content = Content(service_name=service_name,
+                          rpc_method=rpc_method,
+                          queue_pos=len(self.queues[service_name]),
+                          content_type=content_type)
+
+        entry.contents.append(content)
         db.session.add(entry)
         db.session.commit()
 
+        self.queues[service_name].append(content.content_id)
+
         if func:
-            res_th = Thread(target=func, daemon=True, args=(uid, content_id, ), kwargs=args)
+            res_th = Thread(target=func, daemon=True, args=(content.content_id, rpc_method, ), kwargs=args)
             res_th.start()
         
-        return uid
+        return uid, content.content_id
     
-    def update(self, uid, content_id, queue_pos, expiration=None, content=None):
+    def update(self, content_id, queue_pos=0, expiration=None, content=None):
         if self.log:
-            self.log.info("Updating content: {} {} Queue: {}".format(uid, content_id, queue_pos))
-        
-        item = f"{uid}#{content_id}"
-        entry = self.query_one_uid(uid)
-        if entry and entry.contents:
-            for _, c in enumerate(entry.contents):
-                if c.content_id == item:
-                    c.queue_pos = queue_pos
-                    if expiration:
-                        c.expiration = datetime.now() + self._get_delta_str(expiration)
-                    if content:
-                        c.content = content
-                        
-                    db.session.commit()
-                    
-                    if queue_pos == -1:
-                        self.queue_rem_pos(item)
-    
-    def remove(self, uid, content_id=None):
-        if self.log:
-            self.log.info("Removing content: {} {}".format(uid, content_id))
+            self.log.info("Updating content: {} Queue: {}".format(content_id, queue_pos))
 
-        entry = self.query_one_uid(uid)
-        if entry:
-            if content_id:
-                db.session.delete(self.query_one_content(uid, content_id))
+        c = self.query_one_content(content_id)
+        if c:
+            c.queue_pos = queue_pos
+            if expiration:
+                c.expiration = datetime.now() + self._get_delta_str(expiration)
+            if content:
+                c.content = content
+                
+            db.session.commit()
+            
+            if queue_pos == -1:
+                self.queue_rem_pos(content_id)
+    
+    def remove(self, uid=None, content_id=None):
+        if self.log:
+            self.log.info("Removing content: {}".format(content_id))
+
+        # Remove the UID with all its contents
+        if uid:
+            entry = self.query_one_uid(uid)
+            db.session.delete(entry)
+            db.session.commit()
+            for content_id in self.query_all_content(uid):
+                self.queue_rem_pos(content_id)
+        # Else remove just the target content
+        elif content_id:
+            content = self.query_one_content(content_id)
+            if content:
+                db.session.delete(content)
                 db.session.commit()
-                # If no more contents for this UID(entry), remove it
-                if not entry.contents:
-                    db.session.delete(entry)
-                    db.session.commit()
-            else:
-                db.session.delete(entry)
-                db.session.commit()
+            self.queue_rem_pos(content_id)
 
     # ==================================================================================================================
 
@@ -181,25 +189,26 @@ class ContentServer:
         return timedelta(**time_params)
 
     # ========================================== Queue Methods =========================================================
-    def queue_get_pos(self, item):
-        """ Return the position of item in the Queue """
-        if item in self.queue:
-            return self.queue.index(item)
-        else:
-            return -1
+    def queue_get_pos(self, content_id):
+        """ Return the position of item in the Queue of a Service """
+        for k, v in self.queues.items():
+            if content_id in v:
+                return self.queues[k].index(content_id)
+        return -1
 
     def queue_update(self):
         """ Update all positions in the Queue """
-        for item in self.queue:
-            [uid, content_id] = item.split("#")
-            self.update(uid,
-                        content_id,
-                        queue_pos=self.queue_get_pos(item))
+        for k, v in self.queues.items():
+            for content_id in self.queues[k]:
+                self.update(content_id,
+                            queue_pos=self.queue_get_pos(content_id))
 
-    def queue_rem_pos(self, item):
-        """ Remove the position of item in the Queue """
-        self.queue.pop(self.queue.index(item))
-        self.queue_update()
+    def queue_rem_pos(self, content_id):
+        """ Remove an item from the Queue """
+        for k, v in self.queues.items():
+            if content_id in v:
+                self.queues[k].pop(self.queues[k].index(content_id))
+                self.queue_update()
 
     # ==================================================================================================================
 
@@ -239,6 +248,7 @@ class ContentServer:
                     d = {
                         "uid": c.uid,
                         "service": c.service_name,
+                        "rpc_method": c.rpc_method,
                         "content_id": c.content_id,
                         "queue_pos": position,
                         "button_class": f"btn btn-block btn-{btn_type} btn-sm {btn_disabled}",
@@ -308,14 +318,14 @@ class ContentServer:
                     user_pwd = request.form.get("user_pwd", None)
                     if user_pwd == self.admin_pwd:
                         uid = request.form.get("uid", None)
-                        content_id = request.form.get("content_id", None)
                         service_name = request.form.get("service_name", None)
+                        rpc_method = request.form.get("rpc_method", None)
                         content_type = request.form.get("content_type", None)
-                        uid = self.add(uid=uid,
-                                       content_id=content_id,
-                                       service_name=service_name,
-                                       content_type=content_type)
-                        return uid
+                        uid, content_id = self.add(uid=uid,
+                                                   service_name=service_name,
+                                                   rpc_method=rpc_method,
+                                                   content_type=content_type)
+                        return f"{uid}&{content_id}"
                     else:
                         return "Denied"
             except Exception as e:
@@ -328,17 +338,15 @@ class ContentServer:
                 if request.method == "POST":
                     user_pwd = request.form.get("user_pwd", None)
                     if user_pwd == self.admin_pwd:
-                        uid = request.form.get("uid", None)
                         content_id = request.form.get("content_id", None)
                         queue_pos = request.form.get("queue_pos", None)
                         expiration = request.form.get("expiration", None)
                         content = request.form.get("content", None)
-                        self.update(uid=uid,
-                                    content_id=content_id,
+                        self.update(content_id=int(content_id),
                                     queue_pos=int(queue_pos),
                                     expiration=expiration,
                                     content=content)
-                        return uid
+                        return content_id
                     else:
                         return "Denied"
             except Exception as e:
@@ -350,16 +358,18 @@ class ContentServer:
             try:
                 if request.method == "GET":
                     if session["uid"] == self.admin_pwd:
-                        uid = request.args.get("uid")
-                        content_id = request.args.get("content_id")
-                        self.remove(uid, content_id)
+                        uid = request.args.get("uid", None)
+                        content_id = request.args.get("content_id", None)
+                        self.remove(uid=uid,
+                                    content_id=int(content_id))
                     return redirect("/")
                 elif request.method == "POST":
                     user_pwd = request.form.get("user_pwd", None)
                     if user_pwd == self.admin_pwd:
                         uid = request.form.get("uid", None)
                         content_id = request.form.get("content_id", None)
-                        self.remove(uid, content_id)
+                        self.remove(uid=uid,
+                                    content_id=int(content_id))
                         return uid
                     else:
                         return "Denied"
@@ -371,9 +381,8 @@ class ContentServer:
         def queue_get_pos():
             try:
                 if request.method == "POST":
-                    uid = request.form.get("uid", None)
                     content_id = request.form.get("content_id", None)
-                    return str(self.queue_get_pos(f"{uid}#{content_id}"))
+                    return str(self.queue_get_pos(int(content_id)))
             except Exception as e:
                 return str(e)
 
