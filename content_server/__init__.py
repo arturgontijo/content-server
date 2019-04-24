@@ -98,8 +98,11 @@ class ContentServer:
         return Content.query.filter_by(content_id=content_id).first()
     
     def add(self, uid=None, service_name="test_service", rpc_method=None, content_type=None, func=None, args=None):
-        if not uid:
+        while not uid:
             uid = self._generate_uid()
+            entry = self.query_one_uid(uid)
+            if entry:
+                uid = None
 
         if self.log:
             self.log.info("Adding content: {} {}".format(uid, rpc_method))
@@ -215,50 +218,51 @@ class ContentServer:
     def serve(self):
         """ Wraps Flask routes and starts its APP """
         
-        def get_content_list(uid):
+        def get_content_list(uids):
             """ Get and Preprocess data from the DB to be used in the Dashboard """
             content_list = []
-            uid = self.query_one_uid(uid)
-            if uid and uid.contents:
-                for c in uid.contents:
-                    if c.queue_pos == -1:
-                        position = status = "Ready"
-                        btn_type = "success"
-                    elif c.queue_pos == 0:
-                        position = status = "Processing"
-                        btn_type = "info"
-                    else:
-                        position = c.queue_pos
-                        status = "Pending"
-                        btn_type = "warning"
-                    
-                    btn_disabled = "disabled" if c.uid != uid else ""
-                    content = "" if c.uid != uid else c.content
-                    
-                    expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S") if c.expiration else status
-                    if not c.expiration:
-                        btn_disabled = "disabled"
-                    elif c.expiration <= datetime.now():
-                        position = status = "Expired"
-                        btn_type = "danger"
-                        btn_disabled = "disabled"
-                        content = ""
-                        expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S")
-                    
-                    d = {
-                        "uid": c.uid,
-                        "service": c.service_name,
-                        "rpc_method": c.rpc_method,
-                        "content_id": c.content_id,
-                        "queue_pos": position,
-                        "button_class": f"btn btn-block btn-{btn_type} btn-sm {btn_disabled}",
-                        "status": status,
-                        "content_type": c.content_type,
-                        "content": content if content is not None else status,
-                        "expiration": expiration,
-                        "date": c.creation.strftime("%m/%d/%Y, %H:%M:%S")
-                    }
-                    content_list.append(d)
+            for _uid in uids:
+                uid = self.query_one_uid(_uid)
+                if uid and uid.contents:
+                    for c in uid.contents:
+                        if c.queue_pos == -1:
+                            position = status = "Ready"
+                            btn_type = "success"
+                        elif c.queue_pos == 0:
+                            position = status = "Processing"
+                            btn_type = "info"
+                        else:
+                            position = c.queue_pos
+                            status = "Pending"
+                            btn_type = "warning"
+                        
+                        btn_disabled = "disabled" if c.uid != uid else ""
+                        content = "" if c.uid != uid else c.content
+                        
+                        expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S") if c.expiration else status
+                        if not c.expiration:
+                            btn_disabled = "disabled"
+                        elif c.expiration <= datetime.now():
+                            position = status = "Expired"
+                            btn_type = "danger"
+                            btn_disabled = "disabled"
+                            content = ""
+                            expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S")
+                        
+                        d = {
+                            "uid": c.uid,
+                            "service": c.service_name,
+                            "rpc_method": c.rpc_method,
+                            "content_id": c.content_id,
+                            "queue_pos": position,
+                            "button_class": f"btn btn-block btn-{btn_type} btn-sm {btn_disabled}",
+                            "status": status,
+                            "content_type": c.content_type,
+                            "content": content if content is not None else status,
+                            "expiration": expiration,
+                            "date": c.creation.strftime("%m/%d/%Y, %H:%M:%S")
+                        }
+                        content_list.append(d)
             return content_list
         
         def check_uid(uid):
@@ -280,36 +284,51 @@ class ContentServer:
             if request.method == "POST":
                 uid = request.form.get("uid")
             elif "logged" in session and session["logged"]:
-                uid = session["uid"]
-                
+                uid = session["uids"][0]
+            
+            if "uids" not in session:
+                session["uids"] = []
+
+            if uid not in session["uids"]:
+                session["uids"].append(uid)
+            session["logged"] = True
+            
             admin = False
             if uid == self.admin_pwd:
                 admin = True
                 content_list = []
                 for uid_entry in self.query_all_uid():
-                    content_list.extend(get_content_list(uid_entry.uid))
-                session["uid"] = uid
-                session["logged"] = True
+                    content_list.extend(get_content_list([uid_entry.uid]))
                 return render_template("dashboard.html",
                                        user="Admin",
                                        admin=admin,
                                        content_list=content_list)
             elif check_uid(uid):
-                session["uid"] = uid
-                session["logged"] = True
-                content_list = get_content_list(session["uid"])
                 return render_template("dashboard.html",
-                                       user=session["uid"],
+                                       user=session["uids"][0],
                                        admin=admin,
-                                       content_list=content_list)
-            session["uid"] = None
+                                       content_list=get_content_list(session["uids"]))
+            session["uids"] = []
             session["logged"] = False
             return redirect("/")
         
+        @app.route("/add_uid", methods=["POST"])
+        def add_uid():
+            if request.method == "POST":
+                if "logged" in session and session["logged"]:
+                    uid = request.form.get("uid")
+                    if check_uid(uid):
+                        if uid not in session["uids"]:
+                            session["uids"].append(uid)
+                            session.modified = True
+                    return redirect("/dashboard")
+                else:
+                    return render_template("login.html")
+        
         @app.route("/logout")
         def logout():
+            session["uids"] = []
             session["logged"] = False
-            session["uid"] = -1
             return redirect("/")
     
         # POST API - Add new entry in the DB
@@ -359,7 +378,7 @@ class ContentServer:
         def post_remove():
             try:
                 if request.method == "GET":
-                    if session["uid"] == self.admin_pwd:
+                    if session["uids"][0] == self.admin_pwd:
                         uid = request.args.get("uid", None)
                         content_id = request.args.get("content_id", None)
                         self.remove(uid=uid,

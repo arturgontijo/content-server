@@ -16,6 +16,19 @@
 </nav>
 {% endblock %}
 
+{% block addUID %}
+<form action="add_uid" method="post" class="sidebar-form">
+  <div class="input-group">
+    <input type="text" name="uid" class="form-control" placeholder="Add UID...">
+    <span class="input-group-btn">
+          <button type="submit" name="search" id="search-btn" class="btn btn-flat">
+            <i class="fa fa-plus"></i>
+          </button>
+        </span>
+  </div>
+</form>
+{% endblock %}
+
 {% block counter %}
 <span class="pull-right-container">
     {% if content_list %}
