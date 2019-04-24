@@ -291,6 +291,7 @@ class ContentServer:
                 session["uid"] = uid
                 session["logged"] = True
                 return render_template("dashboard.html",
+                                       user="Admin",
                                        admin=admin,
                                        content_list=content_list)
             elif check_uid(uid):
@@ -298,6 +299,7 @@ class ContentServer:
                 session["logged"] = True
                 content_list = get_content_list(session["uid"])
                 return render_template("dashboard.html",
+                                       user=session["uid"],
                                        admin=admin,
                                        content_list=content_list)
             session["uid"] = None
