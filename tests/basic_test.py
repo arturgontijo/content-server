@@ -1,5 +1,4 @@
 from content_server import ContentServer
-from datetime import datetime
 import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - [%(levelname)8s] - %(name)s - %(message)s")

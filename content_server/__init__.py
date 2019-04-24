@@ -183,7 +183,10 @@ class ContentServer:
     # ========================================== Queue Methods =========================================================
     def queue_get_pos(self, item):
         """ Return the position of item in the Queue """
-        return self.queue.index(item)
+        if item in self.queue:
+            return self.queue.index(item)
+        else:
+            return -1
 
     def queue_update(self):
         """ Update all positions in the Queue """
@@ -287,6 +290,8 @@ class ContentServer:
                 return render_template("dashboard.html",
                                        admin=admin,
                                        content_list=content_list)
+            session["uid"] = None
+            session["logged"] = False
             return redirect("/")
         
         @app.route("/logout")

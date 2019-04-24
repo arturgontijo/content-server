@@ -3,8 +3,9 @@ syntax = "proto3";
 package example_service;
 
 message Numbers {
-    float a = 1;
-    float b = 2;
+    string uid = 1;
+    float a = 2;
+    float b = 3;
 }
 
 message Result {

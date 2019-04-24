@@ -21,13 +21,14 @@ if __name__ == "__main__":
             endpoint = "localhost:{}".format(registry["example_async_service"]["grpc"])
 
         grpc_method = input("Method (add|sub|mul|div): ") if not test_flag else "mul"
+        uid = input("UID: ") if not test_flag else None
         a = float(input("Number 1: ") if not test_flag else "12")
         b = float(input("Number 2: ") if not test_flag else "7")
 
         # Open a gRPC channel
         channel = grpc.insecure_channel("{}".format(endpoint))
         stub = grpc_ex_grpc.CalculatorStub(channel)
-        number = grpc_ex_pb2.Numbers(a=a, b=b)
+        number = grpc_ex_pb2.Numbers(uid=uid, a=a, b=b)
 
         if grpc_method == "add":
             response = stub.add(number)

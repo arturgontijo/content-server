@@ -22,6 +22,7 @@ log = logging.getLogger("example_async_service")
 
 # Content Server
 cs = None
+admin_pwd = "admin"
 
 """
 Simple arithmetic service to test the Snet Daemon (gRPC), dApp and/or Snet-CLI.
@@ -67,7 +68,8 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = cs.add(content_id="ADD",
+        result.uid = cs.add(uid=request.uid,
+                            content_id="ADD",
                             service_name="example_async_service",
                             content_type="text",
                             func=self.process_request,
@@ -90,7 +92,8 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = cs.add(content_id="SUB",
+        result.uid = cs.add(uid=request.uid,
+                            content_id="SUB",
                             service_name="example_async_service",
                             content_type="text",
                             func=self.process_request,
@@ -100,7 +103,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         content_id = "POST_SUB_URL"
         r = requests.post("http://localhost:7001/post_add",
                           data={
-                              "user_pwd": "admin",
+                              "user_pwd": admin_pwd,
                               "uid": result.uid,
                               "content_id": content_id,
                               "service_name": "example_async_service",
@@ -120,7 +123,8 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = cs.add(content_id="MUL",
+        result.uid = cs.add(uid=request.uid,
+                            content_id="MUL",
                             service_name="example_async_service",
                             content_type="text",
                             func=self.process_request,
@@ -135,7 +139,8 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # ASYNC Content Server Logic
         # - Get an UID for this request (datetime based)
-        result.uid = cs.add(content_id="DIV",
+        result.uid = cs.add(uid=request.uid,
+                            content_id="DIV",
                             service_name="example_async_service",
                             content_type="text",
                             func=self.process_request,
@@ -249,7 +254,7 @@ def serve(max_workers=10, port=7777):
 
 def init_content_server():
     global cs
-    cs = ContentServer(host="0.0.0.0", port=7001, admin_pwd="admin", log=log)
+    cs = ContentServer(host="0.0.0.0", port=7001, admin_pwd=admin_pwd, log=log)
     
     log.info("Creating Content Server Database...")
     cs.create(drop=True)
