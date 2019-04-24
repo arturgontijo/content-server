@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package example_service;
 
-message Numbers {
+message Input {
     string uid = 1;
     float a = 2;
     float b = 3;
@@ -13,8 +13,8 @@ message Result {
 }
 
 service Calculator {
-    rpc add(Numbers) returns (Result) {}
-    rpc sub(Numbers) returns (Result) {}
-    rpc mul(Numbers) returns (Result) {}
-    rpc div(Numbers) returns (Result) {}
+    rpc add(Input) returns (Result) {}
+    rpc sub(Input) returns (Result) {}
+    rpc mul(Input) returns (Result) {}
+    rpc div(Input) returns (Result) {}
 }

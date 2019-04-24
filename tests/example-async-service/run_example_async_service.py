@@ -70,8 +70,8 @@ def start_service(cwd, service_module, run_daemon, daemon_config, run_ssl):
         """Add SSL keys to snetd.config.json"""
         with open(conf, "r") as f:
             snetd_configs = json.load(f)
-            snetd_configs["ssl_cert"] = "/opt/singnet/.certs/fullchain.pem"
-            snetd_configs["ssl_key"] = "/opt/singnet/.certs/privkey.pem"
+            snetd_configs["ssl_cert"] = "/etc/letsencrypt/live/bh.singularitynet.io/fullchain.pem"
+            snetd_configs["ssl_key"] = "/etc/letsencrypt/live/bh.singularitynet.io/privkey.pem"
         with open(conf, "w") as f:
             json.dump(snetd_configs, f, sort_keys=True, indent=4)
     

@@ -226,7 +226,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         # Got the response, update DB with expiration and content
         r = requests.post("http://localhost:7001/post_update",
                           data={
-                              "user_pwd": "admin",
+                              "user_pwd": admin_pwd,
                               "uid": uid,
                               "content_id": content_id,
                               "queue_pos": -1,

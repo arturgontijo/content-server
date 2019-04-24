@@ -28,7 +28,7 @@ if __name__ == "__main__":
         # Open a gRPC channel
         channel = grpc.insecure_channel("{}".format(endpoint))
         stub = grpc_ex_grpc.CalculatorStub(channel)
-        number = grpc_ex_pb2.Numbers(uid=uid, a=a, b=b)
+        number = grpc_ex_pb2.Input(uid=uid, a=a, b=b)
 
         if grpc_method == "add":
             response = stub.add(number)
