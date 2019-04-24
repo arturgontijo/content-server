@@ -23,6 +23,8 @@ log = logging.getLogger("example_async_service")
 # Content Server
 cs = None
 admin_pwd = "admin"
+cs_host = "localhost"
+cs_port = 7001
 
 """
 Simple arithmetic service to test the Snet Daemon (gRPC), dApp and/or Snet-CLI.
@@ -101,7 +103,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # Re-use the same UID to register another entry (via HTTP POST).
         content_id = "POST_SUB_URL"
-        r = requests.post("http://localhost:7001/post_add",
+        r = requests.post(f"http://{cs_host}:{cs_port}/post_add",
                           data={
                               "user_pwd": admin_pwd,
                               "uid": result.uid,
@@ -192,7 +194,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
     @staticmethod
     def process_request_post(uid, content_id, request):
         # Waiting for queue
-        r = requests.post("http://localhost:7001/queue_get_pos",
+        r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos",
                           data={
                               "uid": uid,
                               "content_id": content_id
@@ -224,7 +226,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
             content = "https://singularitynet.io"
         
         # Got the response, update DB with expiration and content
-        r = requests.post("http://localhost:7001/post_update",
+        r = requests.post(f"http://{cs_host}:{cs_port}/post_update",
                           data={
                               "user_pwd": admin_pwd,
                               "uid": uid,
@@ -254,7 +256,7 @@ def serve(max_workers=10, port=7777):
 
 def init_content_server():
     global cs
-    cs = ContentServer(host="0.0.0.0", port=7001, admin_pwd=admin_pwd, log=log)
+    cs = ContentServer(host=cs_host, port=cs_port, admin_pwd=admin_pwd, log=log)
     
     log.info("Creating Content Server Database...")
     cs.create(drop=True)
