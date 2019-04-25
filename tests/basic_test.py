@@ -10,43 +10,40 @@ def main():
     log.info("Creating Test Database...")
     cs.create(drop=True)
 
-    cs.add("0", "Model", "Service_1")
-    cs.add("0", "File_1", "Service_2")
-    cs.add("0", "File_2", "Service_3")
-    cs.add("0", "File_3", "Service_4")
-    cs.add("0", "File_4", "Service_5")
-    cs.add("0", "File_5", "Service_6")
-    cs.add("0", "File_6", "Service_7")
+    uid_0, content_id_0_model = cs.add(uid="0", service_name="Service_1", rpc_method="Model")
+    uid_0, content_id_0_file_1 = cs.add(uid="0", service_name="Service_2", rpc_method="File_1")
+    uid_0, content_id_0_file_2 = cs.add(uid="0", service_name="Service_3", rpc_method="File_2")
+    uid_0, content_id_0_file_3 = cs.add(uid="0", service_name="Service_4", rpc_method="File_3")
+    uid_0, content_id_0_file_4 = cs.add(uid="0", service_name="Service_5", rpc_method="File_4")
+    uid_0, content_id_0_file_5 = cs.add(uid="0", service_name="Service_6", rpc_method="File_5")
+    uid_0, content_id_0_file_6 = cs.add(uid="0", service_name="Service_7", rpc_method="File_6")
     
-    cs.update("0",
-              "Model",
-              queue_pos=0)
+    # Processing Model
+    cs.update(content_id=content_id_0_model, queue_pos=0)
     
-    cs.update("0",
-              "Model",
+    # Model is Ready, set its content and its expiration to 1 minute.
+    cs.update(content_id=content_id_0_model,
               queue_pos=-1,
               expiration="1m",
               content="https://www.google.com")
 
-    cs.remove("0", "File_4")
+    # Testing remove
+    cs.remove(content_id=content_id_0_file_4)
 
-    cs.add("1", "File", "Service_1")
-    cs.update("1",
-              "File",
-              queue_pos=0)
+    uid_1, content_id_1_file = cs.add(uid="1", service_name="Service_1", rpc_method="File")
+    cs.update(content_id=content_id_1_file, queue_pos=0)
 
-    cs.add("2", "File", "Service_1")
+    uid_2, content_id_2_file = cs.add(uid="2", service_name="Service_1", rpc_method="File")
 
-    cs.add("3", "File", "Service_1")
-    cs.update("3",
-              "File",
+    uid_3, content_id_3_file = cs.add(uid="3", service_name="Service_1", rpc_method="File")
+    cs.update(content_id=content_id_3_file,
               queue_pos=-1,
               expiration="1d",
               content="https://www.google.com")
 
-    cs.add("4", "File", "Service_1")
+    uid_4, content_id_3_file = cs.add(uid="4", service_name="Service_1", rpc_method="File")
 
-    cs.add("5", "File", "Service_1")
+    uid_5, content_id_3_file = cs.add(uid="5", service_name="Service_1", rpc_method="File")
     
     cs.serve()
 
