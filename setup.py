@@ -19,5 +19,8 @@ setup(
         'Flask',
         'Flask-SQLAlchemy'
     ],
-    include_package_data=True
+    include_package_data=True,
+    package_data={
+        '': ['content_server/static/*', 'content_server/templates/*']
+    }
 )

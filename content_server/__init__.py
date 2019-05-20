@@ -59,13 +59,12 @@ class Content(db.Model):
                "Queue: {}\n" \
                "Expiration: {}\n" \
                "Creation: {}\n" \
-               "Content: {}".format(
-            self.id,
-            self.content_uid,
-            self.queue_pos,
-            self.expiration,
-            self.creation,
-            self.content)
+               "Content: {}".format(self.id,
+                                    self.content_uid,
+                                    self.queue_pos,
+                                    self.expiration,
+                                    self.creation,
+                                    self.content)
 
 
 class ContentServer:
@@ -138,7 +137,7 @@ class ContentServer:
         if func:
             res_th = Thread(target=func,
                             daemon=True,
-                            args=(content.content_id, rpc_method, ),
+                            args=(uid, content.content_id, rpc_method, ),
                             kwargs=args)
             res_th.start()
         
