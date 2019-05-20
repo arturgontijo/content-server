@@ -17,7 +17,8 @@ import service.common
 import service.service_spec.example_async_service_pb2_grpc as grpc_bt_grpc
 from service.service_spec.example_async_service_pb2 import Result
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - [%(levelname)8s] - %(name)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - [%(levelname)8s]"
+                                               " - %(name)s - %(message)s")
 log = logging.getLogger("example_async_service")
 
 # Content Server
@@ -27,7 +28,7 @@ cs_host = "localhost"
 cs_port = 7001
 
 """
-Simple arithmetic service to test the Snet Daemon (gRPC), dApp and/or Snet-CLI.
+Simple arithmetic service to test the SNET Daemon (gRPC), dApp and/or SNET-CLI.
 The user must provide the method (arithmetic operation) and
 two numeric inputs: "a" and "b".
 
@@ -85,7 +86,9 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                                func=self.process_request,
                                args={"request": request})
 
-        log.info("add({},{},{})=Pending".format(result.uid, request.a, request.b))
+        log.info("add({},{},{})=Pending".format(result.uid,
+                                                request.a,
+                                                request.b))
         return result
 
     def sub(self, request, context):
@@ -114,10 +117,15 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
         [_, content_id] = r.text.split("&")
 
         # Initiate the thread that will handle the request
-        sub_post_th = Thread(target=self.process_request_post, daemon=True, args=(content_id, rpc_method, request))
+        sub_post_th = Thread(target=self.process_request_post,
+                             daemon=True,
+                             args=(content_id, rpc_method, request))
         sub_post_th.start()
 
-        log.info("sub({},{},{})=Pending {}".format(result.uid, request.a, request.b, r.status_code))
+        log.info("sub({},{},{})=Pending {}".format(result.uid,
+                                                   request.a,
+                                                   request.b,
+                                                   r.status_code))
         return result
 
     def mul(self, request, context):
@@ -193,10 +201,12 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
     @staticmethod
     def process_request_post(content_id, rpc_method, request):
         # Waiting for queue
-        r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos", data={"content_id": content_id})
+        r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos",
+                          data={"content_id": content_id})
         queue_pos = int(r.text)
         while queue_pos != 0:
-            r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos", data={"content_id": content_id})
+            r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos",
+                              data={"content_id": content_id})
             queue_pos = int(r.text)
             time.sleep(1)
     
@@ -226,7 +236,10 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
                               "content": content
                           })
     
-        log.info("{}({})={} [Ready {}]".format(rpc_method, content_id, content, r.status_code))
+        log.info("{}({})={} [Ready {}]".format(rpc_method,
+                                               content_id,
+                                               content,
+                                               r.status_code))
 
 
 # The gRPC serve function.
@@ -246,7 +259,10 @@ def serve(max_workers=10, port=7777):
 
 def init_content_server():
     global cs
-    cs = ContentServer(host=cs_host, port=cs_port, admin_pwd=admin_pwd, log=log)
+    cs = ContentServer(host=cs_host,
+                       port=cs_port,
+                       admin_pwd=admin_pwd,
+                       log=log)
     
     log.info("Creating Content Server Database...")
     cs.create(drop=True)
@@ -258,7 +274,7 @@ def init_content_server():
 
 if __name__ == "__main__":
     """
-    Runs the gRPC server to communicate with the Snet Daemon.
+    Runs the gRPC server to communicate with the SNET Daemon.
     """
     parser = service.common.common_parser(__file__)
     args = parser.parse_args(sys.argv[1:])

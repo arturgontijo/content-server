@@ -16,12 +16,17 @@ if __name__ == "__main__":
                 test_flag = True
 
         # Example Service - Arithmetic
-        endpoint = input("Endpoint (localhost:{}): ".format(registry["example_async_service"]["grpc"])) if not test_flag else ""
+        endpoint = input(
+            "Endpoint (localhost:{}): ".format(
+                registry["example_async_service"]["grpc"])) if not test_flag \
+            else ""
         if endpoint == "":
-            endpoint = "localhost:{}".format(registry["example_async_service"]["grpc"])
+            endpoint = "localhost:{}".format(
+                registry["example_async_service"]["grpc"])
 
         uid = input("UID: ") if not test_flag else None
-        grpc_method = input("Method (add|sub|mul|div): ") if not test_flag else "mul"
+        grpc_method = input("Method (add|sub|mul|div): ") if not test_flag \
+            else "mul"
         a = float(input("Number 1: ") if not test_flag else "12")
         b = float(input("Number 2: ") if not test_flag else "7")
 

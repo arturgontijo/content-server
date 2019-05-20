@@ -17,13 +17,16 @@ db_file_folder = "content_db"
 
 app = Flask(__name__)
 app.config.update(
-    SQLALCHEMY_DATABASE_URI=f"sqlite:///{cwd}/{db_file_folder}/content.db",
+    SQLALCHEMY_DATABASE_URI="sqlite:///{}/{}/content.db".format(
+        cwd,
+        db_file_folder),
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     SECRET_KEY=b"_5#y2L'F4Q8z\n\xec]/")
 
 db = SQLAlchemy(app)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - [%(levelname)8s] - %(name)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - [%(levelname)8s]"
+                                               " - %(name)s - %(message)s")
 _log = logging.getLogger('werkzeug')
 _log.setLevel(logging.ERROR)
 app.logger.setLevel(logging.ERROR)
@@ -51,7 +54,12 @@ class Content(db.Model):
     content_uid = db.Column(db.String(20), db.ForeignKey('uid.uid'), nullable=False)
     
     def __repr__(self):
-        return "id: {}\nUID: {}\nQueue: {}\nExpiration: {}\nCreation: {}\nContent: {}".format(
+        return "id: {}\n" \
+               "UID: {}\n" \
+               "Queue: {}\n" \
+               "Expiration: {}\n" \
+               "Creation: {}\n" \
+               "Content: {}".format(
             self.id,
             self.content_uid,
             self.queue_pos,
@@ -61,7 +69,8 @@ class Content(db.Model):
 
 
 class ContentServer:
-    def __init__(self, host="localhost", port=7000, admin_pwd="admin", queues=None, log=None):
+    def __init__(self, host="localhost", port=7000,
+                 admin_pwd="admin", queues=None, log=None):
         self.host = host
         self.port = port
         self.admin_pwd = admin_pwd
@@ -72,7 +81,7 @@ class ContentServer:
 
         self.log = log
 
-    # ============================================ DB Methods ==========================================================
+    # ========================= DB Methods ====================================
     @staticmethod
     def create(drop=False):
         if not os.path.exists(db_file_folder):
@@ -97,7 +106,8 @@ class ContentServer:
     def query_one_content(content_id):
         return Content.query.filter_by(content_id=content_id).first()
     
-    def add(self, uid=None, service_name="test_service", rpc_method=None, content_type=None, func=None, args=None):
+    def add(self, uid=None, service_name="test_service", rpc_method=None,
+            content_type=None, func=None, args=None):
         while not uid:
             uid = self._generate_uid()
             entry = self.query_one_uid(uid)
@@ -126,14 +136,18 @@ class ContentServer:
         self.queues[service_name].append(content.content_id)
 
         if func:
-            res_th = Thread(target=func, daemon=True, args=(content.content_id, rpc_method, ), kwargs=args)
+            res_th = Thread(target=func,
+                            daemon=True,
+                            args=(content.content_id, rpc_method, ),
+                            kwargs=args)
             res_th.start()
         
         return uid, content.content_id
     
     def update(self, content_id, queue_pos=0, expiration=None, content=None):
         if self.log:
-            self.log.info("Updating content: {} Queue: {}".format(content_id, queue_pos))
+            self.log.info("Updating content: {} Queue: {}".format(content_id,
+                                                                  queue_pos))
 
         c = self.query_one_content(content_id)
         if c:
@@ -167,7 +181,7 @@ class ContentServer:
                 db.session.commit()
             self.queue_rem_pos(content_id)
 
-    # ==================================================================================================================
+    # =========================================================================
 
     @staticmethod
     def _generate_uid():
@@ -180,7 +194,11 @@ class ContentServer:
     @staticmethod
     def _get_delta_str(time_str):
         """ Receive and parse a string to timedelta() """
-        regex = re.compile(r'((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s)?')
+        regex = re.compile(
+            r'((?P<days>\d+?)d)?'
+            r'((?P<hours>\d+?)h)?'
+            r'((?P<minutes>\d+?)m)?'
+            r'((?P<seconds>\d+?)s)?')
         parts = regex.match(time_str)
         if not parts:
             return timedelta()
@@ -191,7 +209,7 @@ class ContentServer:
                 time_params[name] = int(param)
         return timedelta(**time_params)
 
-    # ========================================== Queue Methods =========================================================
+    # ============================ Queue Methods ==============================
     def queue_get_pos(self, content_id):
         """ Return the position of item in the Queue of a Service """
         for k, v in self.queues.items():
@@ -213,13 +231,14 @@ class ContentServer:
                 self.queues[k].pop(self.queues[k].index(content_id))
                 self.queue_update()
 
-    # ==================================================================================================================
+    # =========================================================================
 
     def serve(self):
         """ Wraps Flask routes and starts its APP """
-        
         def get_content_list(uids):
-            """ Get and Preprocess data from the DB to be used in the Dashboard """
+            """
+            Get and Preprocess data from the DB to be used in the Dashboard
+            """
             content_list = []
             for _uid in uids:
                 uid = self.query_one_uid(_uid)
@@ -239,7 +258,8 @@ class ContentServer:
                         btn_disabled = "disabled" if c.uid != uid else ""
                         content = "" if c.uid != uid else c.content
                         
-                        expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S") if c.expiration else status
+                        expiration = c.expiration.strftime(
+                            "%m/%d/%Y, %H:%M:%S") if c.expiration else status
                         if not c.expiration:
                             btn_disabled = "disabled"
                         elif c.expiration <= datetime.now():
@@ -247,7 +267,8 @@ class ContentServer:
                             btn_type = "danger"
                             btn_disabled = "disabled"
                             content = ""
-                            expiration = c.expiration.strftime("%m/%d/%Y, %H:%M:%S")
+                            expiration = c.expiration.strftime(
+                                "%m/%d/%Y, %H:%M:%S")
                         
                         d = {
                             "uid": c.uid,
@@ -255,10 +276,13 @@ class ContentServer:
                             "rpc_method": c.rpc_method,
                             "content_id": c.content_id,
                             "queue_pos": position,
-                            "button_class": f"btn btn-block btn-{btn_type} btn-sm {btn_disabled}",
+                            "button_class": "btn btn-block btn-{} btn-sm "
+                                            "{}".format(btn_type,
+                                                        btn_disabled),
                             "status": status,
                             "content_type": c.content_type,
-                            "content": content if content is not None else status,
+                            "content": content
+                            if content is not None else status,
                             "expiration": expiration,
                             "date": c.creation.strftime("%m/%d/%Y, %H:%M:%S")
                         }
@@ -270,7 +294,7 @@ class ContentServer:
                 return True
             return False
         
-        # ============================================ FLASK Routes ====================================================
+        # ====================== FLASK Routes =================================
         @app.route("/", methods=["GET", "POST"])
         def root():
             if "logged" in session and session["logged"]:
@@ -307,7 +331,8 @@ class ContentServer:
                 return render_template("dashboard.html",
                                        user=session["uids"][0],
                                        admin=admin,
-                                       content_list=get_content_list(session["uids"]))
+                                       content_list=get_content_list(
+                                           session["uids"]))
             session["uids"] = []
             session["logged"] = False
             return redirect("/")
@@ -346,7 +371,8 @@ class ContentServer:
                                                    service_name=service_name,
                                                    rpc_method=rpc_method,
                                                    content_type=content_type)
-                        return f"{uid}&{content_id}"
+                        return "{}&{}".format(uid,
+                                                  content_id)
                     else:
                         return "Denied"
             except Exception as e:

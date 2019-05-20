@@ -14,7 +14,7 @@ setup(
     author='SingularityNET Foundation',
     author_email='info@singularitynet.io',
     description='SingularityNET Content Server',
-    python_requires='>=3.6',
+    python_requires='>=3.5',
     install_requires=[
         'Flask',
         'Flask-SQLAlchemy'
