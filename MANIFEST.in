@@ -1,0 +1,2 @@
+include content_server/static/*
+include content_server/templates/*

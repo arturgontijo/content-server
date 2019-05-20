@@ -9,7 +9,7 @@ import logging
 from flask import Flask, render_template, redirect, session, request
 from flask_sqlalchemy import SQLAlchemy
 
-__version__ = "0.1.0"
+__version__ = "0.2"
 
 app_folder = Path(__file__).absolute().parent
 cwd = os.getcwd()
