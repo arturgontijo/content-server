@@ -326,7 +326,7 @@ class ContentServer:
 
         @app.route("/dashboard", methods=["GET", "POST"])
         def dashboard():
-            uid = None
+            uid = request.args.get("uid", None)
             if request.method == "POST":
                 uid = request.form.get("uid")
             elif "logged" in session and session["logged"]:
