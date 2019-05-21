@@ -151,14 +151,17 @@ class ContentServer:
         c = self.query_one_content(content_id)
         if c:
             c.queue_pos = queue_pos
-            if expiration:
+            # Error
+            if queue_pos == -2:
+                c.expiration = None
+            elif expiration:
                 c.expiration = datetime.now() + self._get_delta_str(expiration)
             if content:
                 c.content = content
                 
             db.session.commit()
             
-            if queue_pos == -1:
+            if queue_pos == -1 or queue_pos == -2:
                 self.queue_rem_pos(content_id)
     
     def remove(self, uid=None, content_id=None):
@@ -246,6 +249,9 @@ class ContentServer:
                         if c.queue_pos == -1:
                             position = status = "Ready"
                             btn_type = "success"
+                        elif c.queue_pos == -2:
+                            position = status = "Error"
+                            btn_type = "danger"
                         elif c.queue_pos == 0:
                             position = status = "Processing"
                             btn_type = "info"
