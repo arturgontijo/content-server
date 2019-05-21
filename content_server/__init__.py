@@ -338,6 +338,7 @@ class ContentServer:
             if uid not in session["uids"]:
                 session["uids"].append(uid)
             session["logged"] = True
+            session.modified = True
             
             admin = False
             if uid == self.admin_pwd:
