@@ -106,7 +106,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
 
         # Re-use the same UID to register another entry (via HTTP POST).
         rpc_method = "post_sub_url"
-        r = requests.post(f"http://{cs_host}:{cs_port}/post_add",
+        r = requests.post("http://{}:{}/post_add".format(cs_host, cs_port),
                           data={
                               "user_pwd": admin_pwd,
                               "uid": result.uid,
@@ -201,11 +201,13 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
     @staticmethod
     def process_request_post(content_id, rpc_method, request):
         # Waiting for queue
-        r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos",
+        r = requests.post("http://{}:{}/queue_get_pos".format(cs_host,
+                                                               cs_port),
                           data={"content_id": content_id})
         queue_pos = int(r.text)
         while queue_pos != 0:
-            r = requests.post(f"http://{cs_host}:{cs_port}/queue_get_pos",
+            r = requests.post("http://{}:{}/queue_get_pos".format(cs_host,
+                                                                   cs_port),
                               data={"content_id": content_id})
             queue_pos = int(r.text)
             time.sleep(1)
@@ -227,7 +229,7 @@ class CalculatorServicer(grpc_bt_grpc.CalculatorServicer):
             content = "https://singularitynet.io"
         
         # Got the response, update DB with expiration and content
-        r = requests.post(f"http://{cs_host}:{cs_port}/post_update",
+        r = requests.post("http://{}:{}/post_update".format(cs_host, cs_port),
                           data={
                               "user_pwd": admin_pwd,
                               "content_id": content_id,

@@ -34,8 +34,14 @@ app.logger.setLevel(logging.ERROR)
 
 class UID(db.Model):
     __tablename__ = "uid"
-    uid = db.Column(db.String(20), primary_key=True, unique=True, nullable=False)
-    contents = db.relationship("Content", backref='uid', lazy=True, cascade="all, delete, delete-orphan")
+    uid = db.Column(db.String(20),
+                    primary_key=True,
+                    unique=True,
+                    nullable=False)
+    contents = db.relationship("Content",
+                               backref='uid',
+                               lazy=True,
+                               cascade="all, delete, delete-orphan")
     
     def __repr__(self):
         return "{}".format(self.uid)
@@ -46,21 +52,26 @@ class Content(db.Model):
     content_id = db.Column(db.Integer, primary_key=True, nullable=False)
     service_name = db.Column(db.String(32), default="")
     rpc_method = db.Column(db.String(32), default="")
+    message = db.Column(db.String(32), default="")
     queue_pos = db.Column(db.Integer, nullable=False)
     expiration = db.Column(db.DateTime)
     creation = db.Column(db.DateTime, nullable=False, default=datetime.now)
     content_type = db.Column(db.String(10), default="text")
     content = db.Column(db.String(4096), default=None)
-    content_uid = db.Column(db.String(20), db.ForeignKey('uid.uid'), nullable=False)
+    content_uid = db.Column(db.String(20),
+                            db.ForeignKey('uid.uid'),
+                            nullable=False)
     
     def __repr__(self):
         return "id: {}\n" \
                "UID: {}\n" \
+               "Message: {}\n" \
                "Queue: {}\n" \
                "Expiration: {}\n" \
                "Creation: {}\n" \
                "Content: {}".format(self.id,
                                     self.content_uid,
+                                    self.message,
                                     self.queue_pos,
                                     self.expiration,
                                     self.creation,
@@ -106,7 +117,7 @@ class ContentServer:
         return Content.query.filter_by(content_id=content_id).first()
     
     def add(self, uid=None, service_name="test_service", rpc_method=None,
-            content_type=None, func=None, args=None):
+            message=None, content_type=None, func=None, args=None):
         while not uid:
             uid = self._generate_uid()
             entry = self.query_one_uid(uid)
@@ -125,6 +136,7 @@ class ContentServer:
             
         content = Content(service_name=service_name,
                           rpc_method=rpc_method,
+                          message=message,
                           queue_pos=len(self.queues[service_name]),
                           content_type=content_type)
 
@@ -143,7 +155,8 @@ class ContentServer:
         
         return uid, content.content_id
     
-    def update(self, content_id, queue_pos=0, expiration=None, content=None):
+    def update(self, content_id, queue_pos=0,
+               message=None, expiration=None, content=None):
         if self.log:
             self.log.info("Updating content: {} Queue: {}".format(content_id,
                                                                   queue_pos))
@@ -156,6 +169,9 @@ class ContentServer:
                 c.expiration = None
             elif expiration:
                 c.expiration = datetime.now() + self._get_delta_str(expiration)
+
+            if message:
+                c.message = message
             if content:
                 c.content = content
                 
@@ -279,6 +295,7 @@ class ContentServer:
                             "uid": c.uid,
                             "service": c.service_name,
                             "rpc_method": c.rpc_method,
+                            "message": c.message,
                             "content_id": c.content_id,
                             "queue_pos": position,
                             "button_class": "btn btn-block btn-{} btn-sm "
