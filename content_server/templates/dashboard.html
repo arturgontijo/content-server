@@ -113,7 +113,7 @@
             </thead>
             <tbody>
                 {% for item in content_list %}
-                  {% if item["queue_pos"] == "Ready" or item["queue_pos"] == "Expired" %}
+                  {% if item["status"] == "Ready" or item["status"] == "Expired" or item["status"] == "Error" %}
                     <tr>
                       <td class="text-center">{{ item["uid"] }}</td>
                       <td class="text-center">{{ item["content_id"] }}</td>
