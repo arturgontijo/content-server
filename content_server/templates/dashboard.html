@@ -129,7 +129,7 @@
                         <td><button type="button" class='{{ item["button_class"] }}' data-toggle="modal" data-target="#responseModal" data-content='{{ item["content"] }}'>{{ item["status"] }}</button></td>
                       {% endif %}
                       {% if admin %}
-                        {% if item["status"] == "Expired" %}
+                        {% if item["status"] == "Expired" or item["status"] == "Error" %}
                           <td class="text-center"><a type="button" href='/post_remove?content_id={{ item["content_id"] }}' class='btn btn-block btn-danger btn-sm'>x</a></td>
                         {% else %}
                           <td class="text-center"><a type="button" href='' class='btn btn-block btn-danger btn-sm disabled'>x</a></td>
